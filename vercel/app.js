@@ -1,3 +1,5 @@
+console.log("app.js loaded");
+
 const connectButton = document.getElementById("connectButton");
 const statusEl = document.getElementById("status");
 const accountEl = document.getElementById("account");
@@ -5,6 +7,16 @@ const networkEl = document.getElementById("network");
 const balanceEl = document.getElementById("balance");
 const switchButton = document.getElementById("switchMainnet");
 const refreshButton = document.getElementById("refreshBalance");
+
+console.log("Elements found:", {
+  connectButton: !!connectButton,
+  statusEl: !!statusEl,
+  accountEl: !!accountEl,
+  networkEl: !!networkEl,
+  balanceEl: !!balanceEl,
+  switchButton: !!switchButton,
+  refreshButton: !!refreshButton,
+});
 
 const MAINNET_CHAIN_ID = "0x2105";
 
@@ -49,13 +61,18 @@ async function refreshAccount() {
 
 async function connectWallet() {
   try {
+    console.log("connectWallet called");
     if (!window.ethereum) {
       setStatus("MetaMask not installed", "warn");
+      console.error("MetaMask not found");
       return;
     }
+    console.log("Requesting accounts...");
     await window.ethereum.request({ method: "eth_requestAccounts" });
+    console.log("Accounts requested, refreshing...");
     await refreshAccount();
   } catch (error) {
+    console.error("Connection error:", error);
     setStatus(error.message || "Connection failed", "warn");
   }
 }
@@ -80,7 +97,13 @@ connectButton.addEventListener("click", connectWallet);
 switchButton.addEventListener("click", switchToMainnet);
 refreshButton.addEventListener("click", refreshAccount);
 
+console.log("Event listeners attached");
+
 if (window.ethereum) {
+  console.log("MetaMask detected");
   window.ethereum.on("accountsChanged", refreshAccount);
   window.ethereum.on("chainChanged", refreshAccount);
+} else {
+  console.warn("MetaMask not detected");
+  setStatus("MetaMask not found", "warn");
 }
