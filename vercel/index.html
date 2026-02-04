@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Marev1 Mainnet Dapp</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <h1>MAREV1 — Ethereum Mainnet</h1>
+        <p>Connect MetaMask, verify mainnet, and view ETH balance.</p>
+      </header>
+
+      <section class="card">
+        <div class="row">
+          <button id="connectButton">Connect MetaMask</button>
+          <span id="status" class="status">Not connected</span>
+        </div>
+        <div class="info-grid">
+          <div>
+            <label>Account</label>
+            <div id="account" class="mono">—</div>
+          </div>
+          <div>
+            <label>Network</label>
+            <div id="network" class="mono">—</div>
+          </div>
+          <div>
+            <label>ETH Balance</label>
+            <div id="balance" class="mono">—</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Quick Actions</h2>
+        <div class="actions">
+          <button id="switchMainnet">Switch to Ethereum Mainnet</button>
+          <button id="refreshBalance">Refresh Balance</button>
+        </div>
+        <p class="hint">Requires MetaMask installed in your browser.</p>
+      </section>
+
+      <section class="card">
+        <h2>Deployment</h2>
+        <ol>
+          <li>Upload the <strong>vercel</strong> folder to Vercel.</li>
+          <li>Set the project root to <strong>vercel</strong>.</li>
+          <li>Deploy — Vercel will serve this static site.</li>
+        </ol>
+      </section>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.2/dist/ethers.umd.min.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>

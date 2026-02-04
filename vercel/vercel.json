@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "name": "marev1-mainnet",
+  "public": true,
+  "builds": [
+    { "src": "**/*", "use": "@vercel/static" }
+  ],
+  "routes": [
+    { "src": "/(.*)", "dest": "/index.html" }
+  ]
+}
