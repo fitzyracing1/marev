@@ -1,6 +1,6 @@
-# Marev1 Mainnet (Vercel)
+# Marev1 Base Mainnet (Vercel)
 
-Static Vercel site that connects MetaMask and verifies Ethereum Mainnet.
+Static Vercel site that connects MetaMask and verifies Base mainnet.
 
 ## Deploy to Vercel
 
@@ -16,5 +16,5 @@ Open `index.html` in a browser with MetaMask installed.
 ## Features
 
 - Connect MetaMask
-- Switch to Ethereum Mainnet
+- Switch to Base Mainnet
 - Display ETH balance

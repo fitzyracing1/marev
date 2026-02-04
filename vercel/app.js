@@ -6,7 +6,7 @@ const balanceEl = document.getElementById("balance");
 const switchButton = document.getElementById("switchMainnet");
 const refreshButton = document.getElementById("refreshBalance");
 
-const MAINNET_CHAIN_ID = "0x1";
+const MAINNET_CHAIN_ID = "0x2105";
 
 function setStatus(text, state) {
   statusEl.textContent = text;
