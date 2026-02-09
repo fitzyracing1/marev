@@ -2,6 +2,7 @@
   "version": 2,
   "public": true,
   "routes": [
-    { "src": "/(.*)", "dest": "/index.html" }
+    { "src": "/(?!.*\\.(js|css|json|html)$)", "dest": "/index.html" },
+    { "src": "/(.*)", "dest": "/$1" }
   ]
 }
