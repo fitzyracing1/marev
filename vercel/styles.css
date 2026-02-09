@@ -108,3 +108,154 @@ label {
   color: #8b949e;
   margin-top: 12px;
 }
+
+/* DEX Specific Styles */
+.header-buttons {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 15px;
+}
+
+.btn-secondary {
+  background: #21262d;
+  color: #58a6ff;
+  border: 1px solid #30363d;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  text-decoration: none;
+  font-size: 14px;
+  display: inline-block;
+  transition: background 0.2s;
+}
+
+.btn-secondary:hover {
+  background: #30363d;
+}
+
+.btn-primary {
+  width: 100%;
+  padding: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  margin-top: 20px;
+}
+
+.swap-container {
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  padding: 20px;
+  background: rgba(15, 23, 42, 0.5);
+}
+
+.swap-input {
+  margin-bottom: 20px;
+}
+
+.swap-input label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: #79c0ff;
+}
+
+.input-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.input-row select,
+.input-row input {
+  flex: 1;
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  padding: 10px 12px;
+  color: #e6edf3;
+  font-size: 14px;
+}
+
+.input-row select {
+  flex: 0 0 100px;
+  cursor: pointer;
+}
+
+.input-row input:focus,
+.input-row select:focus {
+  outline: none;
+  border-color: #2f81f7;
+  box-shadow: 0 0 0 3px rgba(47, 129, 247, 0.1);
+}
+
+.balance {
+  font-size: 12px;
+  color: #8b949e;
+  margin-top: 6px;
+}
+
+.swap-arrow {
+  text-align: center;
+  font-size: 24px;
+  color: #79c0ff;
+  margin: 12px 0;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.swap-arrow:hover {
+  transform: rotate(180deg);
+}
+
+.swap-info {
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 16px;
+  font-size: 14px;
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  color: #8b949e;
+}
+
+.info-row:not(:last-child) {
+  border-bottom: 1px solid #30363d;
+}
+
+.info-row span:last-child {
+  color: #79c0ff;
+  font-family: "Courier New", monospace;
+  font-weight: 600;
+}
+
+.pool-info {
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  padding: 16px;
+  font-size: 14px;
+}
+
+.contract-info {
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  padding: 16px;
+  font-family: "Courier New", monospace;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.contract-info code {
+  background: #21262d;
+  padding: 2px 6px;
+  border-radius: 3px;
+  color: #79c0ff;
+}

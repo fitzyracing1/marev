@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MAREV DEX - Swap on Base</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <h1>MAREV DEX</h1>
+        <p>Decentralized Exchange on Base Mainnet</p>
+        <div class="header-buttons">
+          <a href="index.html" class="btn-secondary">← Back to Wallet</a>
+        </div>
+      </header>
+
+      <section class="card">
+        <div class="row">
+          <button id="connectButton">Connect MetaMask</button>
+          <span id="status" class="status">Not connected</span>
+        </div>
+        <div class="info-grid">
+          <div>
+            <label>Account</label>
+            <div id="account" class="mono">—</div>
+          </div>
+          <div>
+            <label>Network</label>
+            <div id="network" class="mono">—</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Swap Tokens</h2>
+        <div class="swap-container">
+          <div class="swap-input">
+            <label>From</label>
+            <div class="input-row">
+              <select id="tokenFrom">
+                <option value="MAREV">MAREV</option>
+                <option value="USDC">USDC</option>
+              </select>
+              <input
+                type="number"
+                id="amountFrom"
+                placeholder="0.0"
+                min="0"
+                step="0.01"
+              />
+            </div>
+            <div class="balance">
+              Balance: <span id="balanceFrom">—</span>
+            </div>
+          </div>
+
+          <div class="swap-arrow">⇅</div>
+
+          <div class="swap-input">
+            <label>To</label>
+            <div class="input-row">
+              <select id="tokenTo">
+                <option value="USDC">USDC</option>
+                <option value="MAREV">MAREV</option>
+              </select>
+              <input type="number" id="amountTo" placeholder="0.0" readonly />
+            </div>
+            <div class="balance">
+              Balance: <span id="balanceTo">—</span>
+            </div>
+          </div>
+
+          <div class="swap-info">
+            <div class="info-row">
+              <span>Price</span>
+              <span id="price">—</span>
+            </div>
+            <div class="info-row">
+              <span>Fee (0.25%)</span>
+              <span id="fee">—</span>
+            </div>
+            <div class="info-row">
+              <span>Min Receive</span>
+              <span id="minReceive">—</span>
+            </div>
+          </div>
+
+          <button id="swapButton" class="btn-primary">Swap</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Pool Information</h2>
+        <div class="pool-info">
+          <div class="info-row">
+            <span>MAREV Reserve</span>
+            <span id="marevReserve" class="mono">—</span>
+          </div>
+          <div class="info-row">
+            <span>USDC Reserve</span>
+            <span id="usdcReserve" class="mono">—</span>
+          </div>
+          <div class="info-row">
+            <span>Pool Value</span>
+            <span id="poolValue" class="mono">—</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Quick Actions</h2>
+        <div class="actions">
+          <button id="refreshButton">Refresh Data</button>
+          <button id="switchMainnet">Switch to Base Mainnet</button>
+          <a href="deployments-base.json" class="btn-secondary" download>
+            Download Deployment Info
+          </a>
+        </div>
+        <p class="hint">Requires MetaMask installed and Base mainnet enabled.</p>
+      </section>
+
+      <section class="card">
+        <h2>Contract Info</h2>
+        <div class="contract-info">
+          <p id="contractStatus" class="hint">Load contract addresses...</p>
+        </div>
+      </section>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.2/dist/ethers.umd.min.js"></script>
+    <script src="dex.js"></script>
+  </body>
+</html>
