@@ -1,16 +1,28 @@
 console.log("app.js loaded");
 
-// Wait for DOM to be fully loaded
-function initApp() {
-  console.log("Initializing app...");
+// Check if ethers is loaded
+if (typeof ethers === "undefined") {
+  console.error("ethers.js not loaded!");
+}
 
-  const connectButton = document.getElementById("connectButton");
-  const statusEl = document.getElementById("status");
-  const accountEl = document.getElementById("account");
-  const networkEl = document.getElementById("network");
-  const balanceEl = document.getElementById("balance");
-  const switchButton = document.getElementById("switchMainnet");
-  const refreshButton = document.getElementById("refreshBalance");
+// Global state
+let provider = null;
+let signer = null;
+let userAddress = null;
+
+// Elements
+let connectButton, statusEl, accountEl, networkEl, balanceEl, switchButton, refreshButton;
+
+const MAINNET_CHAIN_ID = "0x2105";
+
+function getElements() {
+  connectButton = document.getElementById("connectButton");
+  statusEl = document.getElementById("status");
+  accountEl = document.getElementById("account");
+  networkEl = document.getElementById("network");
+  balanceEl = document.getElementById("balance");
+  switchButton = document.getElementById("switchMainnet");
+  refreshButton = document.getElementById("refreshBalance");
 
   console.log("Elements found:", {
     connectButton: !!connectButton,
@@ -22,93 +34,101 @@ function initApp() {
     refreshButton: !!refreshButton,
   });
 
-  if (!connectButton) {
-    console.error("connectButton not found!");
-    return;
-  }
+  return !!connectButton;
+}
 
-  const MAINNET_CHAIN_ID = "0x2105";
-
-  function setStatus(text, state) {
-    if (statusEl) {
-      statusEl.textContent = text;
-      statusEl.classList.remove("ok", "warn");
-      if (state) {
-        statusEl.classList.add(state);
-      }
+function setStatus(text, state = null) {
+  if (statusEl) {
+    statusEl.textContent = text;
+    statusEl.className = "status";
+    if (state) {
+      statusEl.classList.add(state);
     }
-    console.log(`Status: ${text} (${state})`);
   }
+  console.log(`Status: ${text} (${state || "neutral"})`);
+}
 
-  async function getProvider() {
+async function getProvider() {
+  if (!window.ethereum) {
+    throw new Error("MetaMask not found");
+  }
+  return new ethers.BrowserProvider(window.ethereum);
+}
+
+async function connectWallet() {
+  try {
+    console.log("connectWallet called");
     if (!window.ethereum) {
-      throw new Error("MetaMask not found");
+      setStatus("MetaMask not installed", "warn");
+      return;
     }
-    return new ethers.BrowserProvider(window.ethereum);
+
+    const accounts = await window.ethereum.request({
+      method: "eth_requestAccounts",
+    });
+    console.log("Accounts:", accounts);
+
+    provider = await getProvider();
+    signer = await provider.getSigner();
+    userAddress = await signer.getAddress();
+
+    console.log("Connected address:", userAddress);
+    if (accountEl) accountEl.textContent = userAddress;
+
+    await refreshAccount();
+  } catch (error) {
+    console.error("Connection error:", error);
+    setStatus(error.message || "Connection failed", "warn");
   }
+}
 
-  async function refreshAccount() {
-    try {
-      const provider = await getProvider();
-      const signer = await provider.getSigner();
-      const address = await signer.getAddress();
-      if (accountEl) accountEl.textContent = address;
-
-      const network = await provider.getNetwork();
-      const chainIdHex = "0x" + network.chainId.toString(16);
-      if (networkEl) networkEl.textContent = `${network.name} (${chainIdHex})`;
-
-      if (chainIdHex !== MAINNET_CHAIN_ID) {
-        setStatus("Wrong network", "warn");
-      } else {
-        setStatus("Connected", "ok");
-      }
-
-      const balance = await provider.getBalance(address);
-      if (balanceEl) balanceEl.textContent = `${ethers.formatEther(balance)} ETH`;
-    } catch (error) {
-      console.error("refreshAccount error:", error);
-      setStatus(error.message || "Connection error", "warn");
+async function refreshAccount() {
+  try {
+    if (!provider) {
+      provider = await getProvider();
     }
-  }
 
-  async function connectWallet() {
-    try {
-      console.log("connectWallet called");
-      if (!window.ethereum) {
-        setStatus("MetaMask not installed", "warn");
-        console.error("MetaMask not found");
-        return;
-      }
-      console.log("Requesting accounts...");
-      await window.ethereum.request({ method: "eth_requestAccounts" });
-      console.log("Accounts requested, refreshing...");
-      await refreshAccount();
-    } catch (error) {
-      console.error("Connection error:", error);
-      setStatus(error.message || "Connection failed", "warn");
+    const network = await provider.getNetwork();
+    const chainIdHex = "0x" + network.chainId.toString(16);
+
+    if (networkEl) networkEl.textContent = `${network.name} (${chainIdHex})`;
+
+    if (chainIdHex !== MAINNET_CHAIN_ID) {
+      setStatus("Wrong network - switch to Base", "warn");
+    } else {
+      setStatus("Connected", "ok");
     }
-  }
 
-  async function switchToMainnet() {
-    try {
-      console.log("switchToMainnet called");
-      if (!window.ethereum) {
-        setStatus("MetaMask not installed", "warn");
-        return;
-      }
-      await window.ethereum.request({
-        method: "wallet_switchEthereumChain",
-        params: [{ chainId: MAINNET_CHAIN_ID }],
-      });
-      await refreshAccount();
-    } catch (error) {
-      console.error("Switch error:", error);
-      setStatus(error.message || "Switch failed", "warn");
+    if (userAddress) {
+      const balance = await provider.getBalance(userAddress);
+      const ethBalance = ethers.formatEther(balance);
+      if (balanceEl) balanceEl.textContent = `${parseFloat(ethBalance).toFixed(4)} ETH`;
     }
+  } catch (error) {
+    console.error("refreshAccount error:", error);
+    setStatus(error.message || "Refresh failed", "warn");
   }
+}
 
-  // Attach event listeners
+async function switchToMainnet() {
+  try {
+    console.log("switchToMainnet called");
+    if (!window.ethereum) {
+      setStatus("MetaMask not installed", "warn");
+      return;
+    }
+    await window.ethereum.request({
+      method: "wallet_switchEthereumChain",
+      params: [{ chainId: MAINNET_CHAIN_ID }],
+    });
+    await refreshAccount();
+  } catch (error) {
+    console.error("Switch error:", error);
+    setStatus(error.message || "Switch failed", "warn");
+  }
+}
+
+function attachEventListeners() {
   if (connectButton) {
     connectButton.addEventListener("click", connectWallet);
     console.log("connectButton listener attached");
@@ -121,23 +141,49 @@ function initApp() {
     refreshButton.addEventListener("click", refreshAccount);
     console.log("refreshButton listener attached");
   }
+}
 
-  // Listen for MetaMask account/chain changes
+function initializeMetaMaskListeners() {
   if (window.ethereum) {
-    console.log("MetaMask detected, attaching event listeners");
-    window.ethereum.on("accountsChanged", refreshAccount);
-    window.ethereum.on("chainChanged", refreshAccount);
+    console.log("MetaMask detected");
+    window.ethereum.on("accountsChanged", () => {
+      console.log("Accounts changed");
+      connectWallet();
+    });
+    window.ethereum.on("chainChanged", () => {
+      console.log("Chain changed");
+      refreshAccount();
+    });
   } else {
     console.warn("MetaMask not detected");
     setStatus("MetaMask not installed", "warn");
   }
 }
 
-// Initialize when DOM is ready
-if (document.readyState === "loading") {
-  console.log("DOM still loading, waiting...");
-  document.addEventListener("DOMContentLoaded", initApp);
-} else {
-  console.log("DOM already loaded, initializing...");
-  initApp();
+function initApp() {
+  console.log("initApp started");
+
+  if (!getElements()) {
+    console.error("Failed to get DOM elements!");
+    return;
+  }
+
+  attachEventListeners();
+  initializeMetaMaskListeners();
+
+  setStatus("Ready to connect", "ok");
+  console.log("initApp completed");
 }
+
+// Wait for DOM to be ready
+function waitForReady() {
+  if (document.readyState !== "loading") {
+    console.log("DOM ready, initializing...");
+    initApp();
+  } else {
+    document.addEventListener("DOMContentLoaded", initApp);
+  }
+}
+
+waitForReady();
+console.log("app.js setup complete");
