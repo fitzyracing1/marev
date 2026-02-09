@@ -9,10 +9,19 @@ async function main() {
   const [deployer] = await hre.ethers.getSigners();
   console.log("Deploying with account:", deployer.address);
 
+  // Get current nonce and gas price
+  const nonce = await hre.ethers.provider.getTransactionCount(deployer.address);
+  const feeData = await hre.ethers.provider.getFeeData();
+  const gasPrice = feeData.gasPrice ? feeData.gasPrice * 120n / 100n : null; // 20% higher
+  
+  console.log("Nonce:", nonce);
+  console.log("Gas Price (gwei):", gasPrice ? hre.ethers.formatUnits(gasPrice, "gwei") : "auto");
+
   // Deploy MAREV Token
   console.log("\n1. Deploying MAREV Token...");
   const MAREVToken = await hre.ethers.getContractFactory("MAREVToken");
-  const marevToken = await MAREVToken.deploy();
+  const deployOptions = gasPrice ? { gasPrice, nonce } : { nonce };
+  const marevToken = await MAREVToken.deploy(deployOptions);
   await marevToken.waitForDeployment();
   const marevAddress = await marevToken.getAddress();
   console.log("✓ MAREV Token deployed to:", marevAddress);
@@ -23,14 +32,14 @@ async function main() {
     // Deploy mock USDC on testnet
     console.log("\n2. Deploying Mock USDC (testnet)...");
     const ERC20Mock = await hre.ethers.getContractFactory("ERC20Mock");
-    const mockUsdc = await ERC20Mock.deploy("USD Coin", "USDC", 6);
+    const usdcNonce = nonce + 1;
+    const mockUsdc = await ERC20Mock.deploy("USD Coin", "USDC", 6, {
+      ...(gasPrice ? { gasPrice } : {}),
+      nonce: usdcNonce
+    });
     await mockUsdc.waitForDeployment();
     usdcAddress = await mockUsdc.getAddress();
     console.log("✓ Mock USDC deployed to:", usdcAddress);
-    
-    // Mint testnet USDC for deployer
-    await mockUsdc.mint(deployer.address, hre.ethers.parseUnits("10000", 6));
-    console.log("✓ Minted 10000 USDC to deployer");
   } else {
     // Use actual USDC on Base mainnet
     usdcAddress = "0x833589fCD6eDb6E08f4c7C32D4f71b1566469c3d";
@@ -41,7 +50,11 @@ async function main() {
   const dexLabel = isTestnet ? "3" : "2";
   console.log(`\n${dexLabel}. Deploying MAREV DEX...`);
   const MAREVDex = await hre.ethers.getContractFactory("MAREVDex");
-  const dex = await MAREVDex.deploy(marevAddress, usdcAddress, deployer.address);
+  const dexNonce = isTestnet ? nonce + 2 : nonce + 1;
+  const dex = await MAREVDex.deploy(marevAddress, usdcAddress, deployer.address, {
+    ...(gasPrice ? { gasPrice } : {}),
+    nonce: dexNonce
+  });
   await dex.waitForDeployment();
   const dexAddress = await dex.getAddress();
   console.log("✓ MAREV DEX deployed to:", dexAddress);
