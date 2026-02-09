@@ -39,6 +39,7 @@ const balanceToEl = document.getElementById("balanceTo");
 const refreshButton = document.getElementById("refreshButton");
 const switchButton = document.getElementById("switchMainnet");
 const contractStatusEl = document.getElementById("contractStatus");
+const downloadButton = document.getElementById("downloadButton");
 
 // State
 let provider;
@@ -74,7 +75,7 @@ async function getProvider() {
 
 async function loadDeploymentAddresses() {
   try {
-    const response = await fetch("../dex/deployments-base.json");
+    const response = await fetch("./deployments-base.json");
     if (response.ok) {
       const data = await response.json();
       contractAddresses.marev = data.marevToken;
@@ -327,6 +328,29 @@ async function switchToMainnet() {
   }
 }
 
+function downloadDeploymentInfo() {
+  try {
+    const data = {
+      network: "base",
+      marevToken: contractAddresses.marev,
+      dex: contractAddresses.dex,
+      usdc: contractAddresses.usdc,
+      deploymentTime: new Date().toISOString(),
+    };
+    const json = JSON.stringify(data, null, 2);
+    const blob = new Blob([json], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "marev-deployment-base.json";
+    link.click();
+    URL.revokeObjectURL(url);
+  } catch (error) {
+    console.error("Download error:", error);
+    setStatus("Download failed", "warn");
+  }
+}
+
 function initApp() {
   console.log("Initializing DEX app...");
 
@@ -338,6 +362,7 @@ function initApp() {
   swapButton.addEventListener("click", executeSwap);
   refreshButton.addEventListener("click", refreshData);
   switchButton.addEventListener("click", switchToMainnet);
+  downloadButton.addEventListener("click", downloadDeploymentInfo);
 
   // Price update listeners
   amountFromInput.addEventListener("input", updatePriceQuote);
