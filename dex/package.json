@@ -9,7 +9,11 @@
     "deploy": "hardhat run scripts/deploy.js --network base",
     "deploy:sepolia": "hardhat run scripts/deploy.js --network sepolia"
   },
-  "keywords": ["dex", "base", "ethereum"],
+  "keywords": [
+    "dex",
+    "base",
+    "ethereum"
+  ],
   "author": "fitzyracing1",
   "license": "MIT",
   "devDependencies": {
@@ -17,6 +21,7 @@
     "hardhat": "^2.20.0"
   },
   "dependencies": {
-    "@openzeppelin/contracts": "^5.0.0"
+    "@openzeppelin/contracts": "^5.4.0",
+    "dotenv": "^17.2.4"
   }
 }
