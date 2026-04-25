@@ -1,6 +1,6 @@
 # Marev1 Base Mainnet (Vercel)
 
-Static Vercel site that connects MetaMask and verifies Base mainnet.
+Static Vercel site that connects MetaMask and verifies Base mainnet. Test your rollback.
 
 ## Deploy to Vercel
 
