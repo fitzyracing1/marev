@@ -1,6 +1,6 @@
 # Marev1 Base Mainnet (Vercel)
 
-Static Vercel site that connects MetaMask and verifies Base mainnet. This is your Marev make it yours.
+Static Vercel site that connects MetaMask and verifies Base mainnet.
 
 ## Deploy to Vercel
 
