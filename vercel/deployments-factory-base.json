@@ -1,0 +1,15 @@
+{
+  "network": "base",
+  "chainId": "8453",
+  "factory": "0x878626f220302f0F409F009fb3D4FB8b511A4faE",
+  "listingManager": "0xb1201f255b424A0E0e0d716f95efBBC0eE4DbA7E",
+  "dexRouter": "0x8cFe327CEc66d1C090Dd72bd0FF11d690C33a2Eb",
+  "dexFactory": "0x02a84c1b3BBD7401a5f7fa98a384EBC70bB5749E",
+  "dex": "0x8cFe327CEc66d1C090Dd72bd0FF11d690C33a2Eb",
+  "baseToken": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+  "attentionRewardsHook": "0x88cb287A480DCE4b88e6A0263dc4BCfc4cf7E7d6",
+  "launchFee": "1000000000000000",
+  "deployer": "0x4253AaCA78419dd5d82A74708c29c6Bdfe325565",
+  "deploymentTime": "2026-03-30T15:23:08.478Z",
+  "isTestnet": false
+}

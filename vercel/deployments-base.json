@@ -1,10 +1,11 @@
 {
-  "network": "base-sepolia",
-  "marevToken": "0x9863c4B8eFB29e9bc547FC0303F3A09dCBebb9E3",
-  "dex": "0x0F98bB8a2aD9614ffBbC5b2F9caa788bF3236570",
-  "usdc": "0x1601d32B873B5765D9440f0e3e06363f015f2Fda",
+  "network": "base",
+  "chainId": 8453,
+  "marevToken": "0x77F7188853DD13D7CE3E9bfDeb070a9544eCf446",
+  "dex": "0x3169b0d384480533d691ad8F0a9A4ed776153627",
+  "usdc": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
   "deployer": "0x4253AaCA78419dd5d82A74708c29c6Bdfe325565",
-  "deploymentTime": "2026-02-09T20:55:07.436Z",
-  "isTestnet": true,
-  "note": "Base Sepolia testnet deployment - update these addresses after running: npm run deploy:base-sepolia"
+  "deploymentTime": "2026-03-28T19:22:19.211Z",
+  "isTestnet": false,
+  "note": "Base mainnet deployment"
 }

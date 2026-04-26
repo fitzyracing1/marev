@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://marev-bay.vercel.app/sitemap.xml

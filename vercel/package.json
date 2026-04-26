@@ -1,0 +1,7 @@
+{
+  "name": "marev-vercel-site",
+  "private": true,
+  "dependencies": {
+    "@coinbase/cdp-sdk": "^1.36.1"
+  }
+}

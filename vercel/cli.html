@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MAREV CLI</title>
+    <meta
+      name="description"
+      content="Browser CLI for connecting MetaMask, creating Base meme coins, browsing factory launches, and navigating ATTN claim flows."
+    />
+    <link rel="canonical" href="https://marev-bay.vercel.app/cli" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <h1>MAREV CLI</h1>
+        <p>Command-style interface for the Base factory, DEX hub, and ATTN claims.</p>
+        <div class="header-buttons">
+          <a href="index.html" class="btn-secondary">Home</a>
+          <a href="factory.html" class="btn-secondary">Factory</a>
+          <a href="dex.html" class="btn-secondary">DEX</a>
+          <a href="attention.html" class="btn-secondary">ATTN</a>
+        </div>
+      </header>
+
+      <section class="card">
+        <div class="row">
+          <button id="connectButton">Connect MetaMask</button>
+          <button id="switchBaseButton">Switch to Base</button>
+          <span id="status" class="status">Ready</span>
+        </div>
+        <div class="token-import" style="margin-top: 14px;">
+          <input id="manualAccountInput" type="text" placeholder="Optional manual account address for previews" />
+          <button id="useManualAccount">Use Account</button>
+          <button id="clearManualAccount" class="btn-secondary">Clear Override</button>
+        </div>
+        <p class="hint">Manual account changes affect previews and lookups. Transactions still use the connected MetaMask signer.</p>
+        <div class="info-grid">
+          <div>
+            <label>Active Account</label>
+            <div id="account" class="mono">-</div>
+          </div>
+          <div>
+            <label>Signer</label>
+            <div id="signerAccount" class="mono">-</div>
+          </div>
+          <div>
+            <label>Network</label>
+            <div id="network" class="mono">-</div>
+          </div>
+          <div>
+            <label>Factory</label>
+            <div id="factoryAddress" class="mono">-</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Commands</h2>
+        <div class="token-import">
+          <input id="commandInput" type="text" placeholder='Try: help, connect, show coins, create-token --name Joshua --symbol JOSH --supply 1000000' />
+          <button id="runCommand">Run</button>
+        </div>
+        <p class="hint">This CLI runs safe browser dapp actions only. It cannot run local shell commands on a visitor device.</p>
+      </section>
+
+      <section class="card">
+        <h2>Output</h2>
+        <div id="cliOutput" class="mono" style="white-space: pre-wrap; min-height: 260px;">MAREV CLI ready.
+
+Type "help" to see commands.</div>
+      </section>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.2/dist/ethers.umd.min.js"></script>
+    <script src="cli.js"></script>
+  </body>
+</html>

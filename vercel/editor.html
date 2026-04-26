@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MAREV Public Editor</title>
+    <meta
+      name="description"
+      content="Public web editor for curated MAREV site files with GitHub-backed save, rollback, and audit history."
+    />
+    <link rel="canonical" href="https://marev-bay.vercel.app/editor" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <h1>MAREV Public Editor</h1>
+        <p>Edit allowed site files live, publish changes through GitHub, and roll back quickly if something goes wrong.</p>
+        <div class="header-buttons">
+          <a href="index.html" class="btn-secondary">Back to Home</a>
+          <a href="dex.html" class="btn-secondary">Open DEX</a>
+        </div>
+      </header>
+
+      <section class="card">
+        <div class="row">
+          <span id="editorStatus" class="status">Loading editor...</span>
+        </div>
+        <div class="info-grid">
+          <div>
+            <label>Repository</label>
+            <div id="editorRepo" class="mono">-</div>
+          </div>
+          <div>
+            <label>Branch</label>
+            <div id="editorBranch" class="mono">-</div>
+          </div>
+          <div>
+            <label>Current File SHA</label>
+            <div id="editorSha" class="mono">-</div>
+          </div>
+        </div>
+        <p id="editorDescription" class="hint">Loading editor config...</p>
+      </section>
+
+      <section class="card">
+        <h2>Who Is Editing</h2>
+        <div class="info-grid">
+          <div>
+            <label for="actorName">Display Name</label>
+            <input id="actorName" class="editor-input" type="text" placeholder="Builder name" />
+          </div>
+          <div>
+            <label for="actorEmail">Email</label>
+            <input id="actorEmail" class="editor-input" type="email" placeholder="Optional contact email" />
+          </div>
+          <div>
+            <label for="changeSummary">Change Note</label>
+            <input id="changeSummary" class="editor-input" type="text" placeholder="Short summary of the change" />
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="section-title-row">
+          <div>
+            <h2>Edit File</h2>
+            <p class="hint">Only approved frontend files are exposed here. Backend APIs and secrets stay outside this editor.</p>
+          </div>
+          <button id="reloadFile" class="btn-secondary">Reload File</button>
+        </div>
+        <div class="info-grid">
+          <div>
+            <label for="filePicker">Allowed Files</label>
+            <select id="filePicker" class="editor-input"></select>
+          </div>
+          <div>
+            <label>Selected Path</label>
+            <div id="selectedPath" class="mono">-</div>
+          </div>
+          <div>
+            <label>File Description</label>
+            <div id="selectedDescription" class="mono">-</div>
+          </div>
+        </div>
+        <label for="editorContent" class="editor-label-spacer">File Content</label>
+        <textarea id="editorContent" class="editor-textarea" spellcheck="false"></textarea>
+        <div class="token-card-actions">
+          <button id="saveChanges" class="btn-primary editor-action">Publish Change</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="section-title-row">
+          <div>
+            <h2>Rollback</h2>
+            <p class="hint">Pick a previous revision from the selected file's history and restore it to the live branch.</p>
+          </div>
+          <button id="refreshAudit" class="btn-secondary">Refresh Audit</button>
+        </div>
+        <div class="info-grid">
+          <div>
+            <label for="rollbackCommit">Previous Revision</label>
+            <select id="rollbackCommit" class="editor-input"></select>
+          </div>
+          <div>
+            <label>Selected Revision</label>
+            <div id="rollbackSummary" class="mono">-</div>
+          </div>
+        </div>
+        <div class="token-card-actions">
+          <button id="rollbackButton" class="btn-secondary">Rollback Selected File</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="section-title-row">
+          <div>
+            <h2>Audit Log</h2>
+            <p class="hint">Every public editor save or rollback becomes a GitHub commit. This list shows who changed what and when.</p>
+          </div>
+          <button id="refreshGlobalAudit" class="btn-secondary">Refresh Global Audit</button>
+        </div>
+        <div id="auditList" class="audit-list">
+          <div class="empty-state">Loading audit history...</div>
+        </div>
+      </section>
+    </div>
+
+    <script src="editor.js"></script>
+  </body>
+</html>

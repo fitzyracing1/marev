@@ -1,0 +1,42 @@
+{
+  "title": "MAREV Public Editor",
+  "description": "Public editor for curated frontend files in the MAREV site. Backend APIs, secrets, and deployment config stay locked out of this editor.",
+  "allowedFiles": [
+    {
+      "repoPath": "vercel/index.html",
+      "publicPath": "index.html",
+      "label": "Home Page",
+      "description": "Landing page content and navigation."
+    },
+    {
+      "repoPath": "vercel/dex.html",
+      "publicPath": "dex.html",
+      "label": "DEX Page",
+      "description": "Fire Coin and Base trading UI."
+    },
+    {
+      "repoPath": "vercel/dex.js",
+      "publicPath": "dex.js",
+      "label": "DEX Logic",
+      "description": "Frontend trading and on-page DEX behavior."
+    },
+    {
+      "repoPath": "vercel/styles.css",
+      "publicPath": "styles.css",
+      "label": "Shared Styles",
+      "description": "Shared site styling."
+    },
+    {
+      "repoPath": "vercel/app.js",
+      "publicPath": "app.js",
+      "label": "Home Page Logic",
+      "description": "Base mainnet home page behavior."
+    },
+    {
+      "repoPath": "vercel/README.md",
+      "publicPath": "README.md",
+      "label": "Project README",
+      "description": "Public docs for contributors."
+    }
+  ]
+}

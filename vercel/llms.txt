@@ -1,0 +1,26 @@
+# MAREV Base Builder Stack
+
+MAREV is a Base mainnet builder stack with three public products:
+
+- `/dex` - Base token hub for the custom MAREV pool, factory-listed meme coins, and broader Base token discovery.
+- `/factory` - Meme coin factory for launching Base ERC-20 coins and seeding first USDC liquidity.
+- `/attention` - ATTN reward claim page for finalized and on-chain attention rewards.
+
+## Public URLs
+
+- `https://marev-bay.vercel.app/`
+- `https://marev-bay.vercel.app/dex`
+- `https://marev-bay.vercel.app/factory`
+- `https://marev-bay.vercel.app/attention`
+- `https://marev-bay.vercel.app/ai`
+
+## Builder Summary
+
+MAREV helps builders launch meme coins on Base, create first USDC liquidity, register official listed versions,
+discover Base token markets, and claim ATTN rewards tied to activity.
+
+## Useful Files
+
+- `https://marev-bay.vercel.app/deployments-base.json`
+- `https://marev-bay.vercel.app/deployments-factory-base.json`
+- `https://marev-bay.vercel.app/attention-claims.json`

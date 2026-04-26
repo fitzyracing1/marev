@@ -3,16 +3,22 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>MAREV DEX - Swap on Base</title>
+    <title>MAREV DEX - Base Token Hub</title>
+    <meta
+      name="description"
+      content="Base token hub for MAREV, factory-listed meme coins, Base token discovery, and broader Base market search."
+    />
+    <link rel="canonical" href="https://marev-bay.vercel.app/dex" />
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
     <div class="container">
       <header>
         <h1>MAREV DEX</h1>
-        <p>Decentralized Exchange on Base Mainnet</p>
+        <p>Swap MAREV, browse factory launches, and track Base tokens from one page.</p>
         <div class="header-buttons">
-          <a href="index.html" class="btn-secondary">← Back to Wallet</a>
+          <a href="index.html" class="btn-secondary">Back to Wallet</a>
+          <a href="factory.html" class="btn-secondary">Launch a Meme Coin</a>
         </div>
       </header>
 
@@ -21,20 +27,31 @@
           <button id="connectButton">Connect MetaMask</button>
           <span id="status" class="status">Not connected</span>
         </div>
+        <div class="token-import" style="margin-top: 14px;">
+          <input id="manualAccountInput" type="text" placeholder="Optional manual account address for reads" />
+          <button id="useManualAccount">Use Account</button>
+          <button id="clearManualAccount" class="btn-secondary">Clear Override</button>
+        </div>
+        <p class="hint">Manual account changes affect balances and previews. Swaps still use the connected MetaMask signer.</p>
         <div class="info-grid">
           <div>
-            <label>Account</label>
-            <div id="account" class="mono">—</div>
+            <label>Active Account</label>
+            <div id="account" class="mono">-</div>
+          </div>
+          <div>
+            <label>Signer</label>
+            <div id="signerAccount" class="mono">-</div>
           </div>
           <div>
             <label>Network</label>
-            <div id="network" class="mono">—</div>
+            <div id="network" class="mono">-</div>
           </div>
         </div>
       </section>
 
       <section class="card">
-        <h2>Swap Tokens</h2>
+        <h2>MAREV Pool</h2>
+        <p class="hint">This swap box is the custom MAREV/USDC pool. Meme coins launched from the factory appear in the directories below and trade on the standard Base AMM.</p>
         <div class="swap-container">
           <div class="swap-input">
             <label>From</label>
@@ -43,17 +60,9 @@
                 <option value="MAREV">MAREV</option>
                 <option value="USDC">USDC</option>
               </select>
-              <input
-                type="number"
-                id="amountFrom"
-                placeholder="0.0"
-                min="0"
-                step="0.01"
-              />
+              <input type="number" id="amountFrom" placeholder="0.0" min="0" step="0.01" />
             </div>
-            <div class="balance">
-              Balance: <span id="balanceFrom">—</span>
-            </div>
+            <div class="balance">Balance: <span id="balanceFrom">-</span></div>
           </div>
 
           <div class="swap-arrow">⇅</div>
@@ -67,26 +76,29 @@
               </select>
               <input type="number" id="amountTo" placeholder="0.0" readonly />
             </div>
-            <div class="balance">
-              Balance: <span id="balanceTo">—</span>
-            </div>
+            <div class="balance">Balance: <span id="balanceTo">-</span></div>
           </div>
 
           <div class="swap-info">
             <div class="info-row">
               <span>Price</span>
-              <span id="price">—</span>
+              <span id="price">-</span>
             </div>
             <div class="info-row">
               <span>Fee (0.25%)</span>
-              <span id="fee">—</span>
+              <span id="fee">-</span>
             </div>
             <div class="info-row">
               <span>Min Receive</span>
-              <span id="minReceive">—</span>
+              <span id="minReceive">-</span>
+            </div>
+            <div class="info-row">
+              <span>Allowance</span>
+              <span id="allowanceStatus">-</span>
             </div>
           </div>
 
+          <button id="approveButton" class="btn-secondary">Approve Token</button>
           <button id="swapButton" class="btn-primary">Swap</button>
         </div>
       </section>
@@ -96,16 +108,144 @@
         <div class="pool-info">
           <div class="info-row">
             <span>MAREV Reserve</span>
-            <span id="marevReserve" class="mono">—</span>
+            <span id="marevReserve" class="mono">-</span>
           </div>
           <div class="info-row">
             <span>USDC Reserve</span>
-            <span id="usdcReserve" class="mono">—</span>
+            <span id="usdcReserve" class="mono">-</span>
           </div>
           <div class="info-row">
             <span>Pool Value</span>
-            <span id="poolValue" class="mono">—</span>
+            <span id="poolValue" class="mono">-</span>
           </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="section-title-row">
+          <div>
+            <h2>Featured Coin: Fire Coin</h2>
+            <p class="hint">People buy whole shares here. Each share is priced from the live Fire Coin market, and the app converts the share count into however many Fire coins that share value buys.</p>
+          </div>
+          <button id="importFireCoin" class="btn-secondary">Import Fire Coin</button>
+        </div>
+        <div class="featured-coin">
+          <div class="featured-coin-head">
+            <div>
+              <div id="fireCoinTitle" class="featured-coin-title">Fire Coin</div>
+              <div id="fireCoinAddress" class="mono">0x1c78664aed3c83db40bfe1319e7461c3f5b6398d</div>
+            </div>
+            <div class="token-card-actions">
+              <button id="copyFireCoinAddress" class="btn-secondary">Copy Address</button>
+              <button id="fundFireCoinWithCoinbase" class="btn-secondary">Fund with Coinbase</button>
+              <button id="buyFireCoinNow" class="btn-primary featured-coin-cta">Open Fire Coin Swap</button>
+            </div>
+          </div>
+
+          <div class="featured-coin-grid">
+            <div class="featured-coin-box">
+              <label for="fireCoinShareCount">Buy Shares</label>
+              <input id="fireCoinShareCount" type="number" min="1" step="1" placeholder="25" />
+              <div class="quick-picks quick-picks-compact">
+                <button class="btn-secondary fire-coin-preset" data-shares="1">1 Share</button>
+                <button class="btn-secondary fire-coin-preset" data-shares="10">10 Shares</button>
+                <button class="btn-secondary fire-coin-preset" data-shares="100">100 Shares</button>
+              </div>
+            </div>
+
+            <div class="featured-coin-box">
+              <div class="info-row">
+                <span>Share Price</span>
+                <span id="fireCoinSharePrice">-</span>
+              </div>
+              <div class="info-row">
+                <span>Total USDC</span>
+                <span id="fireCoinTotalCost">-</span>
+              </div>
+              <div class="info-row">
+                <span>Estimated Fire Coin Received</span>
+                <span id="fireCoinEstimatedOut">-</span>
+              </div>
+              <div class="info-row">
+                <span>USDC Liquidity</span>
+                <span id="fireCoinUsdcLiquidity">-</span>
+              </div>
+              <div class="info-row">
+                <span>Fire Coin Liquidity</span>
+                <span id="fireCoinTokenLiquidity">-</span>
+              </div>
+            </div>
+          </div>
+
+          <p id="fireCoinStatus" class="hint">Loading Fire Coin market data...</p>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="section-title-row">
+          <div>
+            <h2>Fire Coin Swap Widget</h2>
+            <p class="hint">This widget is set up for Base USDC to Fire Coin and follows your current share selection.</p>
+          </div>
+        </div>
+        <div id="thirdwebWidgetStatus" class="hint">Loading swap widget configuration...</div>
+        <div id="thirdwebSwapRoot" class="thirdweb-widget-shell">
+          <div class="empty-state">Set your thirdweb client ID to load the in-app swap widget.</div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="section-title-row">
+          <div>
+            <h2>Factory Listed Coins</h2>
+            <p class="hint">These are tokens created through your factory stack. Listed tokens are live on Base and can be traded from here.</p>
+          </div>
+          <button id="refreshFactoryTokens" class="btn-secondary">Refresh Factory Coins</button>
+        </div>
+        <div id="factoryTokens" class="token-grid">
+          <div class="empty-state">Loading factory tokens...</div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="section-title-row">
+          <div>
+            <h2>Base Token Browser</h2>
+            <p class="hint">Import any Base token by address, or use the quick picks to pull it into your market view.</p>
+          </div>
+        </div>
+        <div class="token-import">
+          <input id="baseTokenAddress" type="text" placeholder="Paste any Base token address" />
+          <button id="importBaseToken">Import Token</button>
+        </div>
+        <div class="quick-picks">
+          <button class="btn-secondary quick-token" data-address="0x77F7188853DD13D7CE3E9bfDeb070a9544eCf446">MAREV</button>
+          <button class="btn-secondary quick-token" data-address="0x9d2d92664bab6d667b8EfE1C81E276F4cff2eb35">ATTN</button>
+          <button class="btn-secondary quick-token" data-address="0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913">USDC</button>
+          <button class="btn-secondary quick-token" data-address="0xDD0C7e78229672Af3103d4771238ab3A384c5083">Joshua</button>
+          <button class="btn-secondary quick-token" data-address="0x1c78664aed3c83db40bfe1319e7461c3f5b6398d">Fire Coin</button>
+        </div>
+        <div id="baseTokenStatus" class="hint"></div>
+        <div id="baseTokenList" class="token-grid">
+          <div class="empty-state">Imported Base tokens will appear here.</div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="section-title-row">
+          <div>
+            <h2>Base Market Discovery</h2>
+            <p class="hint">Browse a wider live Base token feed, or search for Base pairs by name, symbol, or contract address.</p>
+          </div>
+          <button id="refreshMarketFeed" class="btn-secondary">Refresh Base Feed</button>
+        </div>
+        <div class="token-import">
+          <input id="baseMarketQuery" type="text" placeholder="Search Base tokens or pairs" />
+          <button id="searchBaseMarket">Search Base</button>
+        </div>
+        <div id="baseMarketStatus" class="hint">Loading live Base market feed...</div>
+        <div id="baseMarketFeed" class="token-grid">
+          <div class="empty-state">Live Base market tokens will appear here.</div>
         </div>
       </section>
 
@@ -116,7 +256,7 @@
           <button id="switchMainnet">Switch to Base Mainnet</button>
           <button id="downloadButton">Download Deployment Info</button>
         </div>
-        <p class="hint">Requires MetaMask installed and Base mainnet enabled.</p>
+        <p class="hint">Creators can launch/list on <a href="factory.html">the factory page</a>. Traders can discover listed coins here and jump to the live Base market.</p>
       </section>
 
       <section class="card">
@@ -128,6 +268,8 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.2/dist/ethers.umd.min.js"></script>
+    <script src="integrations.js"></script>
     <script src="dex.js"></script>
+    <script type="module" src="thirdweb-swap.js"></script>
   </body>
 </html>

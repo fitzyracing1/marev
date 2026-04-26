@@ -259,3 +259,275 @@ label {
   border-radius: 3px;
   color: #79c0ff;
 }
+
+.section-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.section-title-row h2 {
+  margin-bottom: 6px;
+}
+
+.token-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.token-card {
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.token-card h3 {
+  margin: 0 0 6px;
+  font-size: 18px;
+}
+
+.token-card p {
+  margin: 6px 0;
+  color: #8b949e;
+  font-size: 14px;
+}
+
+.token-card .token-badge {
+  display: inline-block;
+  margin: 10px 0 4px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.token-badge.live {
+  background: #d4edda;
+  color: #155724;
+}
+
+.token-badge.pending {
+  background: #fff3cd;
+  color: #8a5700;
+}
+
+.token-badge.external {
+  background: #e6edf3;
+  color: #1f2937;
+}
+
+.token-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.token-card-actions button,
+.token-card-actions a {
+  width: auto;
+  text-decoration: none;
+}
+
+.token-import {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.token-import input {
+  flex: 1 1 320px;
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  padding: 12px 14px;
+  color: #e6edf3;
+  font-size: 14px;
+}
+
+.editor-input,
+.editor-textarea,
+select.editor-input {
+  width: 100%;
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  padding: 12px 14px;
+  color: #e6edf3;
+  font-size: 14px;
+}
+
+.editor-textarea {
+  min-height: 420px;
+  resize: vertical;
+  font-family: "Consolas", "Courier New", monospace;
+  line-height: 1.5;
+}
+
+.editor-input:focus,
+.editor-textarea:focus {
+  outline: none;
+  border-color: #2f81f7;
+  box-shadow: 0 0 0 3px rgba(47, 129, 247, 0.1);
+}
+
+.editor-label-spacer {
+  margin-top: 16px;
+}
+
+.editor-action {
+  width: auto;
+  margin-top: 16px;
+}
+
+.audit-list {
+  display: grid;
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.audit-item {
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.audit-item p {
+  margin: 8px 0 10px;
+  color: #c9d1d9;
+}
+
+.audit-item-head,
+.audit-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.audit-meta {
+  color: #8b949e;
+  font-size: 14px;
+}
+
+.featured-coin {
+  margin-top: 16px;
+  border: 1px solid #30363d;
+  border-radius: 12px;
+  padding: 18px;
+  background: linear-gradient(180deg, rgba(127, 29, 29, 0.2), rgba(15, 23, 42, 0.65));
+}
+
+.featured-coin-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.featured-coin-title {
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.featured-coin-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+  margin-top: 18px;
+}
+
+.featured-coin-box {
+  background: rgba(13, 17, 23, 0.82);
+  border: 1px solid #30363d;
+  border-radius: 10px;
+  padding: 14px;
+}
+
+.featured-coin-box input {
+  width: 100%;
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  padding: 12px 14px;
+  color: #e6edf3;
+  font-size: 16px;
+}
+
+.featured-coin-box input:focus {
+  outline: none;
+  border-color: #f97316;
+  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.12);
+}
+
+.featured-coin-cta {
+  width: auto;
+  margin-top: 0;
+  background: linear-gradient(135deg, #ea580c, #dc2626);
+}
+
+.featured-coin-cta:hover {
+  background: linear-gradient(135deg, #f97316, #ef4444);
+}
+
+.quick-picks-compact {
+  margin-top: 12px;
+}
+
+.thirdweb-widget-shell {
+  margin-top: 16px;
+  border: 1px solid #30363d;
+  border-radius: 12px;
+  padding: 18px;
+  background: linear-gradient(180deg, rgba(14, 116, 144, 0.14), rgba(13, 17, 23, 0.94));
+  min-height: 180px;
+}
+
+.thirdweb-widget-mounted {
+  min-height: 540px;
+}
+
+.quick-picks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.empty-state {
+  padding: 24px;
+  border: 1px dashed #30363d;
+  border-radius: 12px;
+  color: #8b949e;
+  text-align: center;
+}
+
+@media (max-width: 640px) {
+  .container {
+    margin: 20px auto;
+    padding: 0 14px 40px;
+  }
+
+  .card {
+    padding: 16px;
+  }
+
+  .token-import {
+    flex-direction: column;
+  }
+
+  .token-import input,
+  .token-import button,
+  .featured-coin-cta {
+    width: 100%;
+  }
+}

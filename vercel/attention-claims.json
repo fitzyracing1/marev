@@ -1,0 +1,24 @@
+{
+  "generatedAt": "2026-03-28T18:37:52.885Z",
+  "network": "base",
+  "chainId": "8453",
+  "distributor": "0x1bc59f15923Fc63836116bf4a50eB9212c081C0E",
+  "oracle": "0x3B6968F9e872D55e23B616914264FeB24Ed21dB1",
+  "token": "0x9d2d92664bab6d667b8EfE1C81E276F4cff2eb35",
+  "days": [
+    {
+      "day": "1",
+      "root": "0xf2836208eccd0015ef0a2130a1229c697a09a50eb34abc779263ef78a0f50042",
+      "totalScore": "256",
+      "totalAmountWei": "100000000000000000000",
+      "claims": {
+        "0x4253AaCA78419dd5d82A74708c29c6Bdfe325565": {
+          "score": "256",
+          "amountWei": "100000000000000000000",
+          "leaf": "0xf2836208eccd0015ef0a2130a1229c697a09a50eb34abc779263ef78a0f50042",
+          "proof": []
+        }
+      }
+    }
+  ]
+}

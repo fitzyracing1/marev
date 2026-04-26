@@ -4,13 +4,18 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Marev1 Base Mainnet Dapp</title>
+    <meta
+      name="description"
+      content="MAREV is a Base builder stack with a meme coin factory, a token discovery DEX hub, and ATTN on-chain reward claims."
+    />
+    <link rel="canonical" href="https://marev-bay.vercel.app/" />
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
     <div class="container">
       <header>
-        <h1>MAREV1 — Base Mainnet</h1>
-        <p>Connect MetaMask, verify Base mainnet, and view ETH balance.</p>
+        <h1>MAREV1 - Base Mainnet</h1>
+        <p>Connect MetaMask, launch Base meme coins, discover tokens, and claim ATTN rewards.</p>
       </header>
 
       <section class="card">
@@ -21,15 +26,15 @@
         <div class="info-grid">
           <div>
             <label>Account</label>
-            <div id="account" class="mono">—</div>
+            <div id="account" class="mono">-</div>
           </div>
           <div>
             <label>Network</label>
-            <div id="network" class="mono">—</div>
+            <div id="network" class="mono">-</div>
           </div>
           <div>
             <label>ETH Balance</label>
-            <div id="balance" class="mono">—</div>
+            <div id="balance" class="mono">-</div>
           </div>
         </div>
       </section>
@@ -39,7 +44,12 @@
         <div class="actions">
           <button id="switchMainnet">Switch to Base Mainnet</button>
           <button id="refreshBalance">Refresh Balance</button>
-          <a href="dex.html" class="btn-secondary">Go to DEX →</a>
+          <a href="editor.html" class="btn-secondary">Public Editor</a>
+          <a href="dex.html" class="btn-secondary">Go to DEX</a>
+          <a href="factory.html" class="btn-secondary">Meme Factory</a>
+          <a href="attention.html" class="btn-secondary">Attention Claims</a>
+          <a href="cli.html" class="btn-secondary">Web CLI</a>
+          <a href="ai.html" class="btn-secondary">AI + Builders</a>
         </div>
         <p class="hint">Requires MetaMask installed in your browser.</p>
       </section>
@@ -49,7 +59,7 @@
         <ol>
           <li>Upload the <strong>vercel</strong> folder to Vercel.</li>
           <li>Set the project root to <strong>vercel</strong>.</li>
-          <li>Deploy — Vercel will serve this static site.</li>
+          <li>Deploy and keep the public URLs stable for search and AI discovery.</li>
         </ol>
       </section>
     </div>

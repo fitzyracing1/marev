@@ -1,11 +1,19 @@
-console.log("dex.js loaded");
-
 const BASE_CHAIN_ID = "0x2105";
+const BASE_RPC_URL = "https://mainnet.base.org";
+const DEXSCREENER_PROFILES_URL = "https://api.dexscreener.com/token-profiles/latest/v1";
+const DEXSCREENER_SEARCH_URL = "https://api.dexscreener.com/latest/dex/search/?q=";
 const USDC_DECIMALS = 6;
 const MAREV_DECIMALS = 18;
+const IMPORT_STORAGE_KEY = "marev-base-token-imports";
+const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
+const FIRE_COIN_ADDRESS = "0x1c78664aed3c83db40bfe1319e7461c3f5b6398d";
+const FIRE_COIN_FALLBACK_NAME = "Fire Coin";
 
-// Contract ABIs
-const MAREV_ABI = [
+const ERC20_ABI = [
+  "function name() view returns (string)",
+  "function symbol() view returns (string)",
+  "function decimals() view returns (uint8)",
+  "function totalSupply() view returns (uint256)",
   "function balanceOf(address account) view returns (uint256)",
   "function approve(address spender, uint256 amount) returns (bool)",
   "function allowance(address owner, address spender) view returns (uint256)",
@@ -18,19 +26,38 @@ const DEX_ABI = [
   "function getReserves() view returns (uint256 marevReserve, uint256 usdcReserve)",
 ];
 
-// UI Elements
+const FACTORY_ABI = [
+  "function getTotalTokens() view returns (uint256)",
+  "function allTokens(uint256 index) view returns (address)",
+  "function getTokenInfo(address tokenAddress) view returns (string, string, address, uint256, uint256, bool)",
+  "function getListingInfo(address tokenAddress) view returns (bool, address, address)",
+];
+
+const V2_FACTORY_ABI = [
+  "function getPair(address tokenA, address tokenB) view returns (address pair)",
+];
+
+const PAIR_ABI = [
+  "function getReserves() view returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast)",
+  "function token0() view returns (address)",
+  "function token1() view returns (address)",
+];
+
 const connectButton = document.getElementById("connectButton");
 const statusEl = document.getElementById("status");
 const accountEl = document.getElementById("account");
+const signerAccountEl = document.getElementById("signerAccount");
 const networkEl = document.getElementById("network");
 const tokenFromSelect = document.getElementById("tokenFrom");
 const tokenToSelect = document.getElementById("tokenTo");
 const amountFromInput = document.getElementById("amountFrom");
 const amountToInput = document.getElementById("amountTo");
+const approveButton = document.getElementById("approveButton");
 const swapButton = document.getElementById("swapButton");
 const priceEl = document.getElementById("price");
 const feeEl = document.getElementById("fee");
 const minReceiveEl = document.getElementById("minReceive");
+const allowanceStatusEl = document.getElementById("allowanceStatus");
 const marevReserveEl = document.getElementById("marevReserve");
 const usdcReserveEl = document.getElementById("usdcReserve");
 const poolValueEl = document.getElementById("poolValue");
@@ -40,30 +67,147 @@ const refreshButton = document.getElementById("refreshButton");
 const switchButton = document.getElementById("switchMainnet");
 const contractStatusEl = document.getElementById("contractStatus");
 const downloadButton = document.getElementById("downloadButton");
+const factoryTokensEl = document.getElementById("factoryTokens");
+const refreshFactoryTokensButton = document.getElementById("refreshFactoryTokens");
+const importBaseTokenButton = document.getElementById("importBaseToken");
+const baseTokenAddressInput = document.getElementById("baseTokenAddress");
+const baseTokenStatusEl = document.getElementById("baseTokenStatus");
+const baseTokenListEl = document.getElementById("baseTokenList");
+const refreshMarketFeedButton = document.getElementById("refreshMarketFeed");
+const searchBaseMarketButton = document.getElementById("searchBaseMarket");
+const baseMarketQueryInput = document.getElementById("baseMarketQuery");
+const baseMarketStatusEl = document.getElementById("baseMarketStatus");
+const baseMarketFeedEl = document.getElementById("baseMarketFeed");
+const manualAccountInput = document.getElementById("manualAccountInput");
+const useManualAccountButton = document.getElementById("useManualAccount");
+const clearManualAccountButton = document.getElementById("clearManualAccount");
+const importFireCoinButton = document.getElementById("importFireCoin");
+const copyFireCoinAddressButton = document.getElementById("copyFireCoinAddress");
+const fundFireCoinWithCoinbaseButton = document.getElementById("fundFireCoinWithCoinbase");
+const buyFireCoinNowButton = document.getElementById("buyFireCoinNow");
+const fireCoinTitleEl = document.getElementById("fireCoinTitle");
+const fireCoinAddressEl = document.getElementById("fireCoinAddress");
+const fireCoinShareCountInput = document.getElementById("fireCoinShareCount");
+const fireCoinSharePriceEl = document.getElementById("fireCoinSharePrice");
+const fireCoinTotalCostEl = document.getElementById("fireCoinTotalCost");
+const fireCoinEstimatedOutEl = document.getElementById("fireCoinEstimatedOut");
+const fireCoinUsdcLiquidityEl = document.getElementById("fireCoinUsdcLiquidity");
+const fireCoinTokenLiquidityEl = document.getElementById("fireCoinTokenLiquidity");
+const fireCoinStatusEl = document.getElementById("fireCoinStatus");
+const thirdwebWidgetStatusEl = document.getElementById("thirdwebWidgetStatus");
 
-// State
 let provider;
 let signer;
-let userAddress;
-let contracts = {
-  marev: null,
-  usdc: null,
-  dex: null,
-};
+let signerAddress;
+let activeAccount;
+const readProvider = new ethers.JsonRpcProvider(BASE_RPC_URL);
+let fireCoinMarket = null;
+const FIRE_COIN_SHARE_PRICE_USDC = 1;
+const BASE_CHAIN_NUMERIC_ID = 8453;
+const appIntegrations = window.APP_INTEGRATIONS || {};
 
 let contractAddresses = {
-  marev: "0x0000000000000000000000000000000000000000",
-  usdc: "0x833589fCD6eDb6E08f4c7C32D4f71b1566469c3d",
-  dex: "0x0000000000000000000000000000000000000000",
+  marev: ZERO_ADDRESS,
+  usdc: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+  dex: ZERO_ADDRESS,
+};
+
+let factoryDeployment = {
+  factory: ZERO_ADDRESS,
+  listingManager: ZERO_ADDRESS,
+  dexRouter: ZERO_ADDRESS,
+  dexFactory: ZERO_ADDRESS,
+  baseToken: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
 };
 
 function setStatus(text, state) {
   statusEl.textContent = text;
   statusEl.classList.remove("ok", "warn");
-  if (state) {
-    statusEl.classList.add(state);
+  if (state) statusEl.classList.add(state);
+}
+
+function shortAddress(address) {
+  return address ? `${address.slice(0, 6)}...${address.slice(-4)}` : "-";
+}
+
+function decimalInputToString(value, decimals) {
+  if (!Number.isFinite(value) || value <= 0) return null;
+  const text = value.toLocaleString("en-US", {
+    useGrouping: false,
+    maximumFractionDigits: decimals,
+  });
+  return text.replace(/(\.\d*?[1-9])0+$|\.0+$/, "$1");
+}
+
+function formatDisplayAmount(value, decimals = 6) {
+  if (!Number.isFinite(value) || value <= 0) return "0";
+  const precision = Math.min(decimals, value < 0.0001 ? decimals : 6);
+  const text = value.toLocaleString("en-US", {
+    useGrouping: false,
+    maximumFractionDigits: precision,
+  });
+  return text.replace(/(\.\d*?[1-9])0+$|\.0+$/, "$1");
+}
+
+function formatUsdLike(amount) {
+  if (!Number.isFinite(amount)) return "-";
+  return `$${amount.toLocaleString("en-US", { maximumFractionDigits: 4 })}`;
+}
+
+function formatUnitsSafe(value, decimals) {
+  try {
+    return parseFloat(ethers.formatUnits(value, decimals));
+  } catch {
+    return 0;
   }
-  console.log(`Status: ${text} (${state})`);
+}
+
+function getTokenMeta(symbol) {
+  return symbol === "MAREV"
+    ? { address: contractAddresses.marev, decimals: MAREV_DECIMALS }
+    : { address: contractAddresses.usdc, decimals: USDC_DECIMALS };
+}
+
+function getReadTokenContract(address) {
+  return new ethers.Contract(address, ERC20_ABI, readProvider);
+}
+
+function getRunnerTokenContract(address, runner) {
+  return new ethers.Contract(address, ERC20_ABI, runner);
+}
+
+function copyAddress(address) {
+  navigator.clipboard.writeText(address);
+}
+
+function openTrade(address) {
+  copyAddress(address);
+  window.open("https://pancakeswap.finance/swap?chain=base", "_blank", "noopener,noreferrer");
+}
+
+function estimateConstantProductOut(amountIn, reserveIn, reserveOut, feeBps = 30) {
+  if (!(amountIn > 0) || !(reserveIn > 0) || !(reserveOut > 0)) return 0;
+  const amountInWithFee = amountIn * (10000 - feeBps);
+  const numerator = amountInWithFee * reserveOut;
+  const denominator = reserveIn * 10000 + amountInWithFee;
+  return denominator > 0 ? numerator / denominator : 0;
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function emitFireCoinShareUpdate(payload = {}) {
+  window.dispatchEvent(
+    new CustomEvent("firecoin-share-update", {
+      detail: payload,
+    })
+  );
 }
 
 async function getProvider() {
@@ -75,54 +219,56 @@ async function getProvider() {
 
 async function loadDeploymentAddresses() {
   try {
-    const response = await fetch("./deployments-base.json");
-    if (response.ok) {
-      const data = await response.json();
-      contractAddresses.marev = data.marevToken;
-      contractAddresses.dex = data.dex;
-      contractAddresses.usdc = data.usdc;
-      console.log("Loaded contract addresses:", contractAddresses);
-      updateContractStatus();
+    const [dexResponse, factoryResponse] = await Promise.all([
+      fetch("./deployments-base.json"),
+      fetch("./deployments-factory-base.json"),
+    ]);
+
+    if (dexResponse.ok) {
+      const dexData = await dexResponse.json();
+      contractAddresses = {
+        marev: dexData.marevToken,
+        usdc: dexData.usdc,
+        dex: dexData.dex,
+      };
+    }
+
+    if (factoryResponse.ok) {
+      factoryDeployment = {
+        ...factoryDeployment,
+        ...(await factoryResponse.json()),
+      };
     }
   } catch (error) {
-    console.log("Using default contract addresses (not deployed yet)");
-    updateContractStatus();
+    console.error("Failed to load deployment metadata", error);
   }
+  updateContractStatus();
 }
 
 function updateContractStatus() {
-  const isDeployed =
-    contractAddresses.marev !== "0x0000000000000000000000000000000000000000";
-
-  if (isDeployed) {
-    contractStatusEl.innerHTML = `
-      <strong>✓ DEX Deployed on Base</strong>
-      <br>MAREV Token: <code>${contractAddresses.marev.slice(0, 6)}...${contractAddresses.marev.slice(-4)}</code>
-      <br>DEX Contract: <code>${contractAddresses.dex.slice(0, 6)}...${contractAddresses.dex.slice(-4)}</code>
-      <br>USDC: <code>${contractAddresses.usdc.slice(0, 6)}...${contractAddresses.usdc.slice(-4)}</code>
-    `;
-  } else {
-    contractStatusEl.innerHTML = `
-      <strong>⚠ DEX Not Yet Deployed</strong>
-      <br>Run <code>npm run deploy</code> in the /dex directory to deploy contracts.
-    `;
-  }
+  contractStatusEl.innerHTML = `
+    <strong>Custom MAREV Pool</strong>
+    <br>MAREV Token: <code>${shortAddress(contractAddresses.marev)}</code>
+    <br>Custom DEX: <code>${shortAddress(contractAddresses.dex)}</code>
+    <br>USDC: <code>${shortAddress(contractAddresses.usdc)}</code>
+    <br><br>
+    <strong>Factory Stack</strong>
+    <br>Factory: <code>${shortAddress(factoryDeployment.factory)}</code>
+    <br>Listing Manager: <code>${shortAddress(factoryDeployment.listingManager)}</code>
+    <br>Base AMM Router: <code>${shortAddress(factoryDeployment.dexRouter)}</code>
+    <br>Base AMM Factory: <code>${shortAddress(factoryDeployment.dexFactory)}</code>
+  `;
 }
 
 async function connectWallet() {
   try {
-    console.log("connectWallet called");
-    if (!window.ethereum) {
-      setStatus("MetaMask not installed", "warn");
-      return;
-    }
-
     await window.ethereum.request({ method: "eth_requestAccounts" });
     provider = await getProvider();
     signer = await provider.getSigner();
-    userAddress = await signer.getAddress();
-
-    accountEl.textContent = userAddress;
+    signerAddress = await signer.getAddress();
+    signerAccountEl.textContent = signerAddress;
+    if (!activeAccount) activeAccount = signerAddress;
+    accountEl.textContent = activeAccount;
     await refreshData();
     setStatus("Connected", "ok");
   } catch (error) {
@@ -135,7 +281,7 @@ async function refreshData() {
   try {
     provider = await getProvider();
     const network = await provider.getNetwork();
-    const chainIdHex = "0x" + network.chainId.toString(16);
+    const chainIdHex = `0x${network.chainId.toString(16)}`;
     networkEl.textContent = `${network.name} (${chainIdHex})`;
 
     if (chainIdHex !== BASE_CHAIN_ID) {
@@ -143,10 +289,15 @@ async function refreshData() {
       return;
     }
 
-    if (userAddress) {
-      await updateBalances();
+    if (activeAccount) {
+      await Promise.all([
+        updateBalances(),
+        updatePoolInfo(),
+        updatePriceQuote(),
+        updateAllowanceStatus(),
+      ]);
+    } else {
       await updatePoolInfo();
-      await updatePriceQuote();
     }
   } catch (error) {
     console.error("Refresh error:", error);
@@ -155,28 +306,18 @@ async function refreshData() {
 }
 
 async function updateBalances() {
+  if (!activeAccount) return;
+
   try {
-    if (!userAddress) return;
+    const marevContract = getReadTokenContract(contractAddresses.marev);
+    const usdcContract = getReadTokenContract(contractAddresses.usdc);
+    const [marevBalance, usdcBalance] = await Promise.all([
+      marevContract.balanceOf(activeAccount),
+      usdcContract.balanceOf(activeAccount),
+    ]);
 
-    // MAREV balance
-    const marevContract = new ethers.Contract(
-      contractAddresses.marev,
-      MAREV_ABI,
-      provider
-    );
-    const marevBalance = await marevContract.balanceOf(userAddress);
-    balanceFromEl.textContent =
-      ethers.formatUnits(marevBalance, MAREV_DECIMALS) + " MAREV";
-
-    // USDC balance
-    const usdcContract = new ethers.Contract(
-      contractAddresses.usdc,
-      MAREV_ABI,
-      provider
-    );
-    const usdcBalance = await usdcContract.balanceOf(userAddress);
-    balanceToEl.textContent =
-      ethers.formatUnits(usdcBalance, USDC_DECIMALS) + " USDC";
+    balanceFromEl.textContent = `${formatDisplayAmount(formatUnitsSafe(marevBalance, MAREV_DECIMALS), MAREV_DECIMALS)} MAREV`;
+    balanceToEl.textContent = `${formatDisplayAmount(formatUnitsSafe(usdcBalance, USDC_DECIMALS), USDC_DECIMALS)} USDC`;
   } catch (error) {
     console.error("Balance update error:", error);
   }
@@ -184,22 +325,15 @@ async function updateBalances() {
 
 async function updatePoolInfo() {
   try {
-    const dexContract = new ethers.Contract(
-      contractAddresses.dex,
-      DEX_ABI,
-      provider
-    );
+    const dexContract = new ethers.Contract(contractAddresses.dex, DEX_ABI, readProvider);
     const [marevReserve, usdcReserve] = await dexContract.getReserves();
 
-    const marevAmount = ethers.formatUnits(marevReserve, MAREV_DECIMALS);
-    const usdcAmount = ethers.formatUnits(usdcReserve, USDC_DECIMALS);
+    const marevAmount = formatUnitsSafe(marevReserve, MAREV_DECIMALS);
+    const usdcAmount = formatUnitsSafe(usdcReserve, USDC_DECIMALS);
 
-    marevReserveEl.textContent = `${parseFloat(marevAmount).toFixed(2)} MAREV`;
-    usdcReserveEl.textContent = `${parseFloat(usdcAmount).toFixed(2)} USDC`;
-
-    // Pool value in USDC
-    const poolValue = parseFloat(marevAmount) + parseFloat(usdcAmount);
-    poolValueEl.textContent = `$${poolValue.toFixed(2)} USDC`;
+    marevReserveEl.textContent = `${formatDisplayAmount(marevAmount, MAREV_DECIMALS)} MAREV`;
+    usdcReserveEl.textContent = `${formatDisplayAmount(usdcAmount, USDC_DECIMALS)} USDC`;
+    poolValueEl.textContent = formatUsdLike(marevAmount + usdcAmount);
   } catch (error) {
     console.error("Pool info error:", error);
   }
@@ -210,15 +344,14 @@ async function updatePriceQuote() {
     const amountFrom = parseFloat(amountFromInput.value) || 0;
     if (amountFrom <= 0) {
       amountToInput.value = "";
-      priceEl.textContent = "—";
-      feeEl.textContent = "—";
-      minReceiveEl.textContent = "—";
+      priceEl.textContent = "-";
+      feeEl.textContent = "-";
+      minReceiveEl.textContent = "-";
       return;
     }
 
     const tokenFrom = tokenFromSelect.value;
     const tokenTo = tokenToSelect.value;
-
     if (tokenFrom === tokenTo) {
       setStatus("Select different tokens", "warn");
       return;
@@ -227,83 +360,163 @@ async function updatePriceQuote() {
     const tokenFromAddr = tokenFrom === "MAREV" ? contractAddresses.marev : contractAddresses.usdc;
     const tokenToAddr = tokenTo === "MAREV" ? contractAddresses.marev : contractAddresses.usdc;
     const decimalsFrom = tokenFrom === "MAREV" ? MAREV_DECIMALS : USDC_DECIMALS;
-
-    const amountInWei = ethers.parseUnits(amountFrom.toString(), decimalsFrom);
-
-    const dexContract = new ethers.Contract(
-      contractAddresses.dex,
-      DEX_ABI,
-      provider
-    );
-    const amountOut = await dexContract.getPrice(
-      tokenFromAddr,
-      tokenToAddr,
-      amountInWei
-    );
-
     const decimalsTo = tokenTo === "MAREV" ? MAREV_DECIMALS : USDC_DECIMALS;
-    const amountOutFormatted = ethers.formatUnits(amountOut, decimalsTo);
+    const normalizedAmountFrom = decimalInputToString(amountFrom, decimalsFrom);
 
-    amountToInput.value = parseFloat(amountOutFormatted).toFixed(4);
+    if (!normalizedAmountFrom) {
+      setStatus("Enter a valid swap amount", "warn");
+      return;
+    }
 
-    // Calculate price and fee
-    const price = (parseFloat(amountOutFormatted) / amountFrom).toFixed(6);
-    const fee = (amountFrom * 0.0025).toFixed(6);
-    const minReceive = (parseFloat(amountOutFormatted) * 0.995).toFixed(4); // 0.5% slippage
+    const amountInWei = ethers.parseUnits(normalizedAmountFrom, decimalsFrom);
+    const dexContract = new ethers.Contract(contractAddresses.dex, DEX_ABI, readProvider);
+    const amountOut = await dexContract.getPrice(tokenFromAddr, tokenToAddr, amountInWei);
+    const amountOutFormatted = formatUnitsSafe(amountOut, decimalsTo);
 
-    priceEl.textContent = `1 ${tokenFrom} = ${price} ${tokenTo}`;
-    feeEl.textContent = `${fee} ${tokenFrom}`;
-    minReceiveEl.textContent = `${minReceive} ${tokenTo}`;
+    amountToInput.value = formatDisplayAmount(amountOutFormatted, decimalsTo);
+    priceEl.textContent = `1 ${tokenFrom} = ${formatDisplayAmount(amountOutFormatted / amountFrom, 8)} ${tokenTo}`;
+    feeEl.textContent = `${formatDisplayAmount(amountFrom * 0.0025, decimalsFrom)} ${tokenFrom}`;
+    minReceiveEl.textContent = `${formatDisplayAmount(amountOutFormatted * 0.995, decimalsTo)} ${tokenTo}`;
   } catch (error) {
     console.error("Price quote error:", error);
     priceEl.textContent = "Error";
   }
 }
 
+async function updateAllowanceStatus() {
+  try {
+    if (!signerAddress || !provider) {
+      allowanceStatusEl.textContent = "-";
+      approveButton.disabled = true;
+      return;
+    }
+
+    const tokenFrom = tokenFromSelect.value;
+    const amountFrom = parseFloat(amountFromInput.value) || 0;
+    const { address, decimals } = getTokenMeta(tokenFrom);
+    const tokenContract = getReadTokenContract(address);
+    const allowance = await tokenContract.allowance(signerAddress, contractAddresses.dex);
+
+    allowanceStatusEl.textContent = `${formatDisplayAmount(formatUnitsSafe(allowance, decimals), decimals)} ${tokenFrom}`;
+
+    if (amountFrom <= 0) {
+      approveButton.disabled = false;
+      approveButton.textContent = `Approve ${tokenFrom}`;
+      return;
+    }
+
+    const normalizedAmountFrom = decimalInputToString(amountFrom, decimals);
+    if (!normalizedAmountFrom) {
+      approveButton.disabled = true;
+      return;
+    }
+
+    const amountInWei = ethers.parseUnits(normalizedAmountFrom, decimals);
+    const hasEnoughAllowance = allowance >= amountInWei;
+    approveButton.disabled = hasEnoughAllowance;
+    approveButton.textContent = hasEnoughAllowance ? `${tokenFrom} Approved` : `Approve ${tokenFrom}`;
+  } catch (error) {
+    console.error("Allowance update error:", error);
+    allowanceStatusEl.textContent = "Error";
+    approveButton.disabled = true;
+  }
+}
+
+async function approveCurrentToken() {
+  try {
+    if (!signer || !signerAddress) {
+      setStatus("Connect wallet first", "warn");
+      return;
+    }
+
+    const tokenFrom = tokenFromSelect.value;
+    const amountFrom = parseFloat(amountFromInput.value) || 0;
+    const { address, decimals } = getTokenMeta(tokenFrom);
+    const normalizedAmountFrom = decimalInputToString(amountFrom, decimals);
+
+    if (!normalizedAmountFrom) {
+      setStatus(`Enter a valid ${tokenFrom} amount before approving`, "warn");
+      return;
+    }
+
+    const amountInWei = ethers.parseUnits(normalizedAmountFrom, decimals);
+    const tokenContract = getRunnerTokenContract(address, signer);
+
+    setStatus(`Approving ${tokenFrom}...`, "ok");
+    const tx = await tokenContract.approve(contractAddresses.dex, amountInWei);
+    await tx.wait();
+    setStatus(`${tokenFrom} approval confirmed`, "ok");
+    await updateAllowanceStatus();
+  } catch (error) {
+    console.error("Approve error:", error);
+    setStatus(error.message || "Approval failed", "warn");
+  }
+}
+
 async function executeSwap() {
   try {
-    console.log("Executing swap...");
-    if (!userAddress) {
+    if (!signerAddress) {
       setStatus("Connect wallet first", "warn");
       return;
     }
 
     const amountFrom = parseFloat(amountFromInput.value);
-    if (amountFrom <= 0) {
+    if (!(amountFrom > 0)) {
       setStatus("Enter amount to swap", "warn");
       return;
     }
 
     const tokenFrom = tokenFromSelect.value;
     const tokenTo = tokenToSelect.value;
-
     if (tokenFrom === tokenTo) {
       setStatus("Select different tokens", "warn");
       return;
     }
 
-    setStatus("Swapping...", "ok");
-
-    const dexContract = new ethers.Contract(
-      contractAddresses.dex,
-      DEX_ABI,
-      signer
-    );
-
     const decimalsFrom = tokenFrom === "MAREV" ? MAREV_DECIMALS : USDC_DECIMALS;
-    const amountInWei = ethers.parseUnits(amountFrom.toString(), decimalsFrom);
+    const normalizedAmountFrom = decimalInputToString(amountFrom, decimalsFrom);
+    if (!normalizedAmountFrom) {
+      setStatus("Invalid amount", "warn");
+      return;
+    }
+
+    const amountInWei = ethers.parseUnits(normalizedAmountFrom, decimalsFrom);
+    const quotedAmountOut = parseFloat(amountToInput.value);
+    if (!Number.isFinite(quotedAmountOut) || quotedAmountOut <= 0) {
+      setStatus("No valid quote yet. Refresh the quote before swapping.", "warn");
+      return;
+    }
+
+    const tokenContract = getReadTokenContract(getTokenMeta(tokenFrom).address);
+    const allowance = await tokenContract.allowance(signerAddress, contractAddresses.dex);
+    if (allowance < amountInWei) {
+      setStatus(`Approve ${tokenFrom} before swapping`, "warn");
+      await updateAllowanceStatus();
+      return;
+    }
+
+    const minAmountOutText = decimalInputToString(
+      quotedAmountOut * 0.995,
+      tokenTo === "MAREV" ? MAREV_DECIMALS : USDC_DECIMALS
+    );
+    if (!minAmountOutText) {
+      setStatus("Quote is too small to swap with current liquidity.", "warn");
+      return;
+    }
+
     const minAmountOut = ethers.parseUnits(
-      (parseFloat(amountToInput.value) * 0.995).toString(),
+      minAmountOutText,
       tokenTo === "MAREV" ? MAREV_DECIMALS : USDC_DECIMALS
     );
 
-    let tx;
-    if (tokenFrom === "MAREV" && tokenTo === "USDC") {
-      tx = await dexContract.swapMARtoUSDC(amountInWei, minAmountOut);
-    } else {
-      tx = await dexContract.swapUSDCtoMAR(amountInWei, minAmountOut);
-    }
+    const dexContract = new ethers.Contract(contractAddresses.dex, DEX_ABI, signer);
+    setStatus("Confirm in MetaMask...", "ok");
+    const tx =
+      tokenFrom === "MAREV"
+        ? await dexContract.swapMARtoUSDC(amountInWei, minAmountOut)
+        : await dexContract.swapUSDCtoMAR(amountInWei, minAmountOut);
 
+    setStatus("Transaction sent. Waiting for confirmation...", "ok");
     await tx.wait();
     setStatus("Swap complete!", "ok");
     amountFromInput.value = "";
@@ -311,6 +524,14 @@ async function executeSwap() {
     await refreshData();
   } catch (error) {
     console.error("Swap error:", error);
+    if (error?.code === 4001) {
+      setStatus("Transaction rejected in MetaMask", "warn");
+      return;
+    }
+    if (error?.code === -32002) {
+      setStatus("MetaMask already has a pending request open", "warn");
+      return;
+    }
     setStatus(error.message || "Swap failed", "warn");
   }
 }
@@ -329,53 +550,582 @@ async function switchToMainnet() {
 }
 
 function downloadDeploymentInfo() {
+  const data = {
+    network: "base",
+    marevToken: contractAddresses.marev,
+    dex: contractAddresses.dex,
+    usdc: contractAddresses.usdc,
+    factory: factoryDeployment.factory,
+    listingManager: factoryDeployment.listingManager,
+    dexRouter: factoryDeployment.dexRouter,
+    dexFactory: factoryDeployment.dexFactory,
+    deploymentTime: new Date().toISOString(),
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "marev-base-token-hub.json";
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+function setActiveAccount(address) {
+  activeAccount = ethers.getAddress(address);
+  accountEl.textContent = activeAccount;
+  manualAccountInput.value = activeAccount;
+}
+
+function getImportedTokens() {
   try {
-    const data = {
-      network: "base",
-      marevToken: contractAddresses.marev,
-      dex: contractAddresses.dex,
-      usdc: contractAddresses.usdc,
-      deploymentTime: new Date().toISOString(),
+    const raw = localStorage.getItem(IMPORT_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveImportedTokens(tokens) {
+  localStorage.setItem(IMPORT_STORAGE_KEY, JSON.stringify(tokens));
+}
+
+function rememberImportedToken(address) {
+  const normalized = ethers.getAddress(address);
+  const next = [normalized, ...getImportedTokens().filter((item) => item !== normalized)].slice(0, 12);
+  saveImportedTokens(next);
+}
+
+async function getPairSummary(tokenAddress, tokenDecimals) {
+  try {
+    const pairFactory = new ethers.Contract(factoryDeployment.dexFactory, V2_FACTORY_ABI, readProvider);
+    const pairAddress = await pairFactory.getPair(tokenAddress, factoryDeployment.baseToken);
+    if (!pairAddress || pairAddress === ZERO_ADDRESS) {
+      return { pairAddress: ZERO_ADDRESS, reserveToken: 0, reserveBase: 0, reserveTokenRaw: 0n, reserveBaseRaw: 0n };
+    }
+
+    const pair = new ethers.Contract(pairAddress, PAIR_ABI, readProvider);
+    const [reserves, token0] = await Promise.all([pair.getReserves(), pair.token0()]);
+    const tokenIs0 = token0.toLowerCase() === tokenAddress.toLowerCase();
+
+    return {
+      pairAddress,
+      reserveToken: tokenIs0
+        ? formatUnitsSafe(reserves[0], tokenDecimals)
+        : formatUnitsSafe(reserves[1], tokenDecimals),
+      reserveBase: tokenIs0 ? formatUnitsSafe(reserves[1], USDC_DECIMALS) : formatUnitsSafe(reserves[0], USDC_DECIMALS),
+      reserveTokenRaw: tokenIs0 ? reserves[0] : reserves[1],
+      reserveBaseRaw: tokenIs0 ? reserves[1] : reserves[0],
     };
-    const json = JSON.stringify(data, null, 2);
-    const blob = new Blob([json], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "marev-deployment-base.json";
-    link.click();
-    URL.revokeObjectURL(url);
   } catch (error) {
-    console.error("Download error:", error);
-    setStatus("Download failed", "warn");
+    console.error("Pair summary error", tokenAddress, error);
+    return { pairAddress: ZERO_ADDRESS, reserveToken: 0, reserveBase: 0, reserveTokenRaw: 0n, reserveBaseRaw: 0n };
+  }
+}
+
+async function loadFeaturedFireCoin() {
+  try {
+    fireCoinAddressEl.textContent = FIRE_COIN_ADDRESS;
+    const token = getReadTokenContract(FIRE_COIN_ADDRESS);
+    const [name, symbol, decimals, totalSupply] = await Promise.all([
+      token.name().catch(() => FIRE_COIN_FALLBACK_NAME),
+      token.symbol().catch(() => "FIRE"),
+      token.decimals().catch(() => 18),
+      token.totalSupply().catch(() => 0n),
+    ]);
+
+    const tokenDecimals = Number(decimals);
+    const pairSummary = await getPairSummary(FIRE_COIN_ADDRESS, tokenDecimals);
+    fireCoinMarket = {
+      address: FIRE_COIN_ADDRESS,
+      name,
+      symbol,
+      decimals: tokenDecimals,
+      totalSupply,
+      pairSummary,
+    };
+
+    fireCoinTitleEl.textContent = `${name} (${symbol})`;
+    fireCoinUsdcLiquidityEl.textContent =
+      pairSummary.pairAddress !== ZERO_ADDRESS
+        ? `${formatDisplayAmount(pairSummary.reserveBase, USDC_DECIMALS)} USDC`
+        : "No USDC pair found";
+    fireCoinTokenLiquidityEl.textContent =
+      pairSummary.pairAddress !== ZERO_ADDRESS
+        ? `${formatDisplayAmount(pairSummary.reserveToken, tokenDecimals)} ${symbol}`
+        : "-";
+
+    if (pairSummary.pairAddress === ZERO_ADDRESS) {
+      fireCoinStatusEl.textContent = "Fire Coin is loaded, but no USDC pair was found in the configured Base AMM yet.";
+    } else {
+      fireCoinStatusEl.textContent = `Share mode is active. 1 share = ${formatDisplayAmount(FIRE_COIN_SHARE_PRICE_USDC, USDC_DECIMALS)} USDC of ${symbol} at the live market price.`;
+    }
+
+    thirdwebWidgetStatusEl.textContent = "thirdweb swap widget will default to Base USDC -> Fire Coin and follow the current share estimate.";
+
+    updateFeaturedFireCoinEstimate();
+  } catch (error) {
+    console.error("Fire Coin load error", error);
+    fireCoinTitleEl.textContent = FIRE_COIN_FALLBACK_NAME;
+    fireCoinStatusEl.textContent = "Could not load Fire Coin market data right now.";
+  }
+}
+
+function updateFeaturedFireCoinEstimate() {
+  const shareCount = Math.floor(parseFloat(fireCoinShareCountInput?.value || ""));
+  fireCoinSharePriceEl.textContent = `${formatDisplayAmount(FIRE_COIN_SHARE_PRICE_USDC, USDC_DECIMALS)} USDC`;
+
+  if (!fireCoinMarket || !Number.isFinite(shareCount) || shareCount <= 0) {
+    fireCoinTotalCostEl.textContent = "-";
+    fireCoinEstimatedOutEl.textContent = "-";
+    emitFireCoinShareUpdate({
+      shareCount: 0,
+      totalUsdc: 0,
+      estimatedFireAmount: "",
+      symbol: fireCoinMarket?.symbol || "FIRE",
+    });
+    return;
+  }
+
+  const pairSummary = fireCoinMarket.pairSummary;
+  if (!pairSummary || pairSummary.pairAddress === ZERO_ADDRESS) {
+    fireCoinTotalCostEl.textContent = `${formatDisplayAmount(shareCount * FIRE_COIN_SHARE_PRICE_USDC, USDC_DECIMALS)} USDC`;
+    fireCoinEstimatedOutEl.textContent = "No pool";
+    emitFireCoinShareUpdate({
+      shareCount,
+      totalUsdc: shareCount * FIRE_COIN_SHARE_PRICE_USDC,
+      estimatedFireAmount: "",
+      symbol: fireCoinMarket.symbol,
+    });
+    return;
+  }
+
+  const totalUsdc = shareCount * FIRE_COIN_SHARE_PRICE_USDC;
+  const estimatedOut = estimateConstantProductOut(totalUsdc, pairSummary.reserveBase, pairSummary.reserveToken);
+  const estimatedOutText = formatDisplayAmount(estimatedOut, fireCoinMarket.decimals);
+  fireCoinTotalCostEl.textContent = `${formatDisplayAmount(totalUsdc, USDC_DECIMALS)} USDC`;
+  fireCoinEstimatedOutEl.textContent = `${estimatedOutText} ${fireCoinMarket.symbol}`;
+  emitFireCoinShareUpdate({
+    shareCount,
+    totalUsdc,
+    estimatedFireAmount: estimatedOut > 0 ? estimatedOutText : "",
+    symbol: fireCoinMarket.symbol,
+  });
+}
+
+async function importFeaturedFireCoin() {
+  await importBaseToken(FIRE_COIN_ADDRESS);
+  fireCoinStatusEl.textContent = "Fire Coin was added to the Base token browser below.";
+}
+
+function buyFeaturedFireCoin() {
+  const shareCount = Math.floor(parseFloat(fireCoinShareCountInput?.value || ""));
+  const totalUsdc = Number.isFinite(shareCount) && shareCount > 0 ? shareCount * FIRE_COIN_SHARE_PRICE_USDC : null;
+  const amountText = totalUsdc ? `${formatDisplayAmount(totalUsdc, USDC_DECIMALS)} USDC` : "the share value you selected";
+  copyAddress(FIRE_COIN_ADDRESS);
+  openTrade(FIRE_COIN_ADDRESS);
+  fireCoinStatusEl.textContent = `Copied the Fire Coin contract address. ${Number.isFinite(shareCount) && shareCount > 0 ? `${shareCount} share${shareCount === 1 ? "" : "s"} = ${amountText}.` : "Share value is ready."} Buyers can now use that amount in the Base swap to receive the matching Fire Coin quantity.`;
+}
+
+async function startCoinbaseOnramp() {
+  try {
+    if (appIntegrations.coinbaseOnrampEnabled === false) {
+      fireCoinStatusEl.textContent = "Coinbase Onramp is disabled in integrations.js.";
+      return;
+    }
+
+    const destinationAddress = activeAccount || signerAddress;
+    if (!destinationAddress) {
+      fireCoinStatusEl.textContent = "Connect a wallet first so Coinbase knows where to send your Base USDC.";
+      return;
+    }
+
+    const shareCount = Math.floor(parseFloat(fireCoinShareCountInput?.value || ""));
+    if (!Number.isFinite(shareCount) || shareCount <= 0) {
+      fireCoinStatusEl.textContent = "Enter a share count first.";
+      return;
+    }
+
+    const totalUsdc = shareCount * FIRE_COIN_SHARE_PRICE_USDC;
+    fireCoinStatusEl.textContent = "Creating Coinbase onramp session...";
+
+    const response = await fetch("/api/coinbase-onramp-session", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        destinationAddress,
+        paymentAmount: totalUsdc.toFixed(2),
+        shareCount,
+      }),
+    });
+
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok || !payload.onrampUrl) {
+      throw new Error(payload.error || "Could not create Coinbase onramp session");
+    }
+
+    fireCoinStatusEl.textContent = `Coinbase Onramp ready. ${shareCount} share${shareCount === 1 ? "" : "s"} = ${formatDisplayAmount(totalUsdc, USDC_DECIMALS)} USDC on Base.`;
+    window.open(payload.onrampUrl, "_blank", "noopener,noreferrer");
+  } catch (error) {
+    console.error("Coinbase onramp error", error);
+    fireCoinStatusEl.textContent = error.message || "Coinbase onramp is unavailable right now.";
+  }
+}
+
+function renderTokenCard(options) {
+  const {
+    title,
+    subtitle,
+    badgeText,
+    badgeClass,
+    lines,
+    tokenAddress,
+    pairAddress,
+    browseLabel = "Trade on Base",
+  } = options;
+
+  const card = document.createElement("div");
+  card.className = "token-card";
+  const linesHtml = lines.map((line) => `<p>${line}</p>`).join("");
+  card.innerHTML = `
+    <h3>${title}</h3>
+    <p>${subtitle}</p>
+    <span class="token-badge ${badgeClass}">${badgeText}</span>
+    ${linesHtml}
+    <div class="token-card-actions">
+      <button class="btn-secondary" data-copy>Copy Address</button>
+      <a class="btn-secondary" href="https://basescan.org/address/${tokenAddress}" target="_blank" rel="noopener noreferrer">BaseScan</a>
+      <button class="btn-secondary" data-trade>${browseLabel}</button>
+      ${pairAddress && pairAddress !== ZERO_ADDRESS ? `<a class="btn-secondary" href="https://basescan.org/address/${pairAddress}" target="_blank" rel="noopener noreferrer">Pair</a>` : ""}
+    </div>
+  `;
+
+  card.querySelector("[data-copy]").addEventListener("click", () => copyAddress(tokenAddress));
+  card.querySelector("[data-trade]").addEventListener("click", () => openTrade(tokenAddress));
+  return card;
+}
+
+function renderMarketCard(pair) {
+  const baseToken = pair.baseToken || {};
+  const quoteToken = pair.quoteToken || {};
+  const liquidityUsd = Number(pair.liquidity?.usd || 0);
+  const priceUsd = pair.priceUsd ? Number(pair.priceUsd) : null;
+  const priceText = priceUsd && Number.isFinite(priceUsd)
+    ? `$${priceUsd.toLocaleString("en-US", { maximumFractionDigits: 8 })}`
+    : "-";
+
+  const card = document.createElement("div");
+  card.className = "token-card";
+  card.innerHTML = `
+    <h3>${escapeHtml(baseToken.name || baseToken.symbol || "Base Token")} (${escapeHtml(baseToken.symbol || "?")})</h3>
+    <p>Live Base market pair on ${escapeHtml(pair.dexId || "dex")}.</p>
+    <span class="token-badge external">Base Market Feed</span>
+    <p>Pair: ${escapeHtml(baseToken.symbol || "?")} / ${escapeHtml(quoteToken.symbol || "?")}</p>
+    <p>Price: ${priceText}</p>
+    <p>Liquidity: ${formatUsdLike(liquidityUsd)}</p>
+    <p>Pair Address: ${shortAddress(pair.pairAddress || ZERO_ADDRESS)}</p>
+    <div class="token-card-actions">
+      <button class="btn-secondary" data-copy>Copy Token</button>
+      <button class="btn-secondary" data-import>Import Token</button>
+      <a class="btn-secondary" href="${pair.url}" target="_blank" rel="noopener noreferrer">Open Market</a>
+      <a class="btn-secondary" href="https://basescan.org/address/${baseToken.address}" target="_blank" rel="noopener noreferrer">BaseScan</a>
+    </div>
+  `;
+
+  card.querySelector("[data-copy]").addEventListener("click", () => copyAddress(baseToken.address));
+  card.querySelector("[data-import]").addEventListener("click", async () => {
+    rememberImportedToken(baseToken.address);
+    await renderImportedBaseTokens();
+    baseTokenStatusEl.textContent = `Imported ${escapeHtml(baseToken.symbol || shortAddress(baseToken.address))} into the Base token browser.`;
+  });
+  return card;
+}
+
+async function loadFactoryTokens() {
+  try {
+    const factory = new ethers.Contract(factoryDeployment.factory, FACTORY_ABI, readProvider);
+    const total = Number(await factory.getTotalTokens());
+    if (!total) {
+      factoryTokensEl.innerHTML = `<div class="empty-state">No factory tokens found yet.</div>`;
+      return;
+    }
+
+    factoryTokensEl.innerHTML = "";
+    const start = Math.max(0, total - 12);
+    for (let i = total - 1; i >= start; i -= 1) {
+      const tokenAddress = await factory.allTokens(i);
+      const [tokenInfo, listingInfo, tokenContract] = await Promise.all([
+        factory.getTokenInfo(tokenAddress),
+        factory.getListingInfo(tokenAddress),
+        Promise.resolve(getReadTokenContract(tokenAddress)),
+      ]);
+
+      const [decimals, totalSupply] = await Promise.all([
+        tokenContract.decimals(),
+        tokenContract.totalSupply(),
+      ]);
+
+      const isListed = listingInfo[0];
+      const pairAddress = listingInfo[2];
+      const tokenDecimals = Number(decimals);
+      const pairSummary = isListed ? await getPairSummary(tokenAddress, tokenDecimals) : null;
+
+      const card = renderTokenCard({
+        title: `${tokenInfo[0]} (${tokenInfo[1]})`,
+        subtitle: isListed ? "Live factory-listed Base token." : "Created through your factory, not listed yet.",
+        badgeText: isListed ? "Official Listed Token" : "Created But Not Listed",
+        badgeClass: isListed ? "live" : "pending",
+        tokenAddress,
+        pairAddress,
+        lines: [
+          `Supply: ${formatDisplayAmount(formatUnitsSafe(totalSupply, tokenDecimals), tokenDecimals)}`,
+          `Creator: ${shortAddress(tokenInfo[2])}`,
+          isListed
+            ? `Pool: ${formatDisplayAmount(pairSummary.reserveToken, tokenDecimals)} token / ${formatDisplayAmount(pairSummary.reserveBase, USDC_DECIMALS)} USDC`
+            : "List this token from the factory page to make it tradeable.",
+        ],
+      });
+
+      factoryTokensEl.appendChild(card);
+    }
+  } catch (error) {
+    console.error("Factory token load error", error);
+    factoryTokensEl.innerHTML = `<div class="empty-state">Could not load factory tokens right now.</div>`;
+  }
+}
+
+async function loadBaseTokenCard(tokenAddress) {
+  const address = ethers.getAddress(tokenAddress);
+  const token = getReadTokenContract(address);
+  const [name, symbol, decimals, totalSupply] = await Promise.all([
+    token.name(),
+    token.symbol(),
+    token.decimals(),
+    token.totalSupply(),
+  ]);
+
+  const tokenDecimals = Number(decimals);
+  const pairSummary =
+    address.toLowerCase() === factoryDeployment.baseToken.toLowerCase()
+      ? { pairAddress: ZERO_ADDRESS, reserveToken: 0, reserveBase: 0 }
+      : await getPairSummary(address, tokenDecimals);
+
+  return renderTokenCard({
+    title: `${name} (${symbol})`,
+    subtitle: "Imported from the broader Base token market.",
+    badgeText: "Base Token Browser",
+    badgeClass: "external",
+    tokenAddress: address,
+    pairAddress: pairSummary.pairAddress,
+    browseLabel: "Open Base Market",
+    lines: [
+      `Decimals: ${decimals}`,
+      `Supply: ${formatDisplayAmount(formatUnitsSafe(totalSupply, tokenDecimals), tokenDecimals)}`,
+      pairSummary.pairAddress !== ZERO_ADDRESS
+        ? `Detected USDC pair: ${formatDisplayAmount(pairSummary.reserveBase, USDC_DECIMALS)} USDC liquidity`
+        : "No USDC pair detected from the configured Base AMM yet.",
+    ],
+  });
+}
+
+async function renderImportedBaseTokens() {
+  const imported = getImportedTokens();
+  if (!imported.length) {
+    baseTokenListEl.innerHTML = `<div class="empty-state">Imported Base tokens will appear here.</div>`;
+    return;
+  }
+
+  baseTokenListEl.innerHTML = "";
+  for (const address of imported) {
+    try {
+      const card = await loadBaseTokenCard(address);
+      baseTokenListEl.appendChild(card);
+    } catch (error) {
+      console.error("Token import render error", address, error);
+    }
+  }
+}
+
+async function importBaseToken(addressInput) {
+  try {
+    const address = ethers.getAddress(addressInput.trim());
+    baseTokenStatusEl.textContent = "Importing token...";
+    rememberImportedToken(address);
+    await renderImportedBaseTokens();
+    baseTokenStatusEl.textContent = `Imported ${shortAddress(address)} into the Base token browser.`;
+    baseTokenAddressInput.value = "";
+  } catch (error) {
+    console.error("Import error", error);
+    baseTokenStatusEl.textContent = "Enter a valid Base token address.";
+  }
+}
+
+async function loadBaseMarketFeed() {
+  try {
+    baseMarketStatusEl.textContent = "Loading live Base market feed...";
+    const response = await fetch(DEXSCREENER_PROFILES_URL);
+    if (!response.ok) {
+      throw new Error(`DexScreener feed returned ${response.status}`);
+    }
+
+    const data = await response.json();
+    const baseEntries = (Array.isArray(data) ? data : [])
+      .filter((entry) => String(entry.chainId || "").toLowerCase() === "base")
+      .slice(0, 12);
+
+    if (!baseEntries.length) {
+      baseMarketFeedEl.innerHTML = `<div class="empty-state">No live Base market entries were returned right now.</div>`;
+      baseMarketStatusEl.textContent = "No Base entries found in the public market feed.";
+      return;
+    }
+
+    baseMarketFeedEl.innerHTML = "";
+    for (const entry of baseEntries) {
+      baseMarketFeedEl.appendChild(
+        renderTokenCard({
+          title: `${entry.tokenName || entry.header || "Base Token"} (${entry.tokenSymbol || "?"})`,
+          subtitle: "Live token profile from the broader Base market feed.",
+          badgeText: "Base Market Feed",
+          badgeClass: "external",
+          tokenAddress: entry.tokenAddress,
+          pairAddress: ZERO_ADDRESS,
+          browseLabel: "Trade on Base",
+          lines: [
+            `Token: ${shortAddress(entry.tokenAddress)}`,
+            entry.description ? entry.description.slice(0, 110) : "Use Import Token to pin this token into your local browser.",
+          ],
+        })
+      );
+    }
+
+    baseMarketStatusEl.textContent = "Showing live Base token profiles from the public market feed.";
+  } catch (error) {
+    console.error("Base market feed error", error);
+    baseMarketFeedEl.innerHTML = `<div class="empty-state">Could not load the broader Base market feed right now.</div>`;
+    baseMarketStatusEl.textContent = "Public Base market feed unavailable right now.";
+  }
+}
+
+async function searchBaseMarket(query) {
+  const trimmed = query.trim();
+  if (!trimmed) {
+    await loadBaseMarketFeed();
+    return;
+  }
+
+  try {
+    baseMarketStatusEl.textContent = `Searching Base market for "${trimmed}"...`;
+    const response = await fetch(`${DEXSCREENER_SEARCH_URL}${encodeURIComponent(trimmed)}`);
+    if (!response.ok) {
+      throw new Error(`DexScreener search returned ${response.status}`);
+    }
+
+    const data = await response.json();
+    const pairs = (data.pairs || [])
+      .filter((pair) => String(pair.chainId || "").toLowerCase() === "base")
+      .slice(0, 12);
+
+    if (!pairs.length) {
+      baseMarketFeedEl.innerHTML = `<div class="empty-state">No Base pairs matched that search.</div>`;
+      baseMarketStatusEl.textContent = `No Base market pairs matched "${trimmed}".`;
+      return;
+    }
+
+    baseMarketFeedEl.innerHTML = "";
+    for (const pair of pairs) {
+      baseMarketFeedEl.appendChild(renderMarketCard(pair));
+    }
+    baseMarketStatusEl.textContent = `Showing ${pairs.length} Base market matches for "${trimmed}".`;
+  } catch (error) {
+    console.error("Base market search error", error);
+    baseMarketFeedEl.innerHTML = `<div class="empty-state">Search failed. Try another Base token, symbol, or address.</div>`;
+    baseMarketStatusEl.textContent = "Base market search is unavailable right now.";
   }
 }
 
 function initApp() {
-  console.log("Initializing DEX app...");
+  loadDeploymentAddresses()
+    .then(async () => {
+      await Promise.all([loadFactoryTokens(), renderImportedBaseTokens(), loadBaseMarketFeed(), loadFeaturedFireCoin(), refreshData()]);
+    })
+    .catch((error) => console.error(error));
 
-  // Load contract addresses
-  loadDeploymentAddresses();
-
-  // Event listeners
   connectButton.addEventListener("click", connectWallet);
+  useManualAccountButton.addEventListener("click", async () => {
+    if (!manualAccountInput.value.trim()) return;
+    setActiveAccount(manualAccountInput.value.trim());
+    await refreshData();
+  });
+  clearManualAccountButton.addEventListener("click", async () => {
+    activeAccount = signerAddress || null;
+    accountEl.textContent = activeAccount || "-";
+    manualAccountInput.value = "";
+    await refreshData();
+  });
+  approveButton.addEventListener("click", approveCurrentToken);
   swapButton.addEventListener("click", executeSwap);
-  refreshButton.addEventListener("click", refreshData);
+  refreshButton.addEventListener("click", async () => {
+    await Promise.all([refreshData(), loadFactoryTokens(), renderImportedBaseTokens(), loadBaseMarketFeed(), loadFeaturedFireCoin()]);
+  });
+  refreshFactoryTokensButton.addEventListener("click", loadFactoryTokens);
+  refreshMarketFeedButton.addEventListener("click", loadBaseMarketFeed);
   switchButton.addEventListener("click", switchToMainnet);
   downloadButton.addEventListener("click", downloadDeploymentInfo);
+  importBaseTokenButton.addEventListener("click", () => importBaseToken(baseTokenAddressInput.value));
+  importFireCoinButton.addEventListener("click", importFeaturedFireCoin);
+  copyFireCoinAddressButton.addEventListener("click", () => copyAddress(FIRE_COIN_ADDRESS));
+  fundFireCoinWithCoinbaseButton.addEventListener("click", startCoinbaseOnramp);
+  buyFireCoinNowButton.addEventListener("click", buyFeaturedFireCoin);
+  searchBaseMarketButton.addEventListener("click", () => searchBaseMarket(baseMarketQueryInput.value));
+  baseTokenAddressInput.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      importBaseToken(baseTokenAddressInput.value);
+    }
+  });
+  baseMarketQueryInput.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      searchBaseMarket(baseMarketQueryInput.value);
+    }
+  });
 
-  // Price update listeners
+  document.querySelectorAll(".quick-token").forEach((button) => {
+    button.addEventListener("click", () => importBaseToken(button.dataset.address));
+  });
+
+  document.querySelectorAll(".fire-coin-preset").forEach((button) => {
+    button.addEventListener("click", () => {
+      fireCoinShareCountInput.value = button.dataset.shares;
+      updateFeaturedFireCoinEstimate();
+    });
+  });
+
   amountFromInput.addEventListener("input", updatePriceQuote);
-  tokenFromSelect.addEventListener("change", updatePriceQuote);
+  amountFromInput.addEventListener("input", updateAllowanceStatus);
+  fireCoinShareCountInput.addEventListener("input", updateFeaturedFireCoinEstimate);
+  tokenFromSelect.addEventListener("change", async () => {
+    await updatePriceQuote();
+    await updateAllowanceStatus();
+  });
   tokenToSelect.addEventListener("change", updatePriceQuote);
 
-  // MetaMask listeners
   if (window.ethereum) {
     window.ethereum.on("accountsChanged", connectWallet);
     window.ethereum.on("chainChanged", refreshData);
   }
 
+  accountEl.textContent = "-";
+  if (signerAccountEl) signerAccountEl.textContent = "-";
   setStatus("Ready to connect", "ok");
+  emitFireCoinShareUpdate({
+    shareCount: 0,
+    totalUsdc: 0,
+    estimatedFireAmount: "",
+    symbol: "FIRE",
+    chainId: BASE_CHAIN_NUMERIC_ID,
+  });
 }
 
 if (document.readyState === "loading") {
