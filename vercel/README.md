@@ -2,6 +2,16 @@
 
 Static Vercel site that connects MetaMask and verifies Base mainnet.
 
+## Live Site
+
+- Home: `https://marev-bay.vercel.app/`
+- DEX: `https://marev-bay.vercel.app/dex.html`
+- Meme Coin Factory: `https://marev-bay.vercel.app/factory.html`
+- Attention Claims: `https://marev-bay.vercel.app/attention.html`
+- AI Builders: `https://marev-bay.vercel.app/ai.html`
+- Web CLI: `https://marev-bay.vercel.app/cli.html`
+- Public Editor: `https://marev-bay.vercel.app/editor.html`
+
 ## Deploy to Vercel
 
 - Set the project root to `vercel/`.
