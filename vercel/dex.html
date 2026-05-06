@@ -50,6 +50,77 @@
       </section>
 
       <section class="card">
+        <h2>Universal Swap</h2>
+        <p class="hint">Swap any Base token at the best price across Uniswap V3, Aerodrome, PancakeSwap, BaseSwap, and more. Routes are aggregated by 0x.</p>
+        <div class="swap-container">
+          <div class="swap-input">
+            <label>You Pay</label>
+            <div class="input-row">
+              <select id="uniSellSelect">
+                <option value="ETH">ETH</option>
+                <option value="0x4200000000000000000000000000000000000006">WETH</option>
+                <option value="0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" selected>USDC</option>
+                <option value="0x77F7188853DD13D7CE3E9bfDeb070a9544eCf446">MAREV</option>
+                <option value="0x9d2d92664bab6d667b8EfE1C81E276F4cff2eb35">ATTN</option>
+                <option value="0x1c78664aed3c83db40bfe1319e7461c3f5b6398d">FCOIN</option>
+                <option value="custom">Custom address...</option>
+              </select>
+              <input id="uniSellAmount" type="number" placeholder="0.0" min="0" step="any" />
+            </div>
+            <input id="uniSellCustom" type="text" placeholder="Custom sell-token address" style="display:none; margin-top:8px; width:100%; background:#0d1117; border:1px solid #30363d; border-radius:8px; padding:10px 12px; color:#e6edf3;" />
+            <div class="balance">Balance: <span id="uniSellBalance">-</span></div>
+          </div>
+
+          <div class="swap-arrow" id="uniFlipBtn">⇅</div>
+
+          <div class="swap-input">
+            <label>You Receive</label>
+            <div class="input-row">
+              <select id="uniBuySelect">
+                <option value="ETH">ETH</option>
+                <option value="0x4200000000000000000000000000000000000006">WETH</option>
+                <option value="0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913">USDC</option>
+                <option value="0x77F7188853DD13D7CE3E9bfDeb070a9544eCf446" selected>MAREV</option>
+                <option value="0x9d2d92664bab6d667b8EfE1C81E276F4cff2eb35">ATTN</option>
+                <option value="0x1c78664aed3c83db40bfe1319e7461c3f5b6398d">FCOIN</option>
+                <option value="custom">Custom address...</option>
+              </select>
+              <input id="uniBuyAmount" type="text" placeholder="0.0" readonly />
+            </div>
+            <input id="uniBuyCustom" type="text" placeholder="Custom buy-token address" style="display:none; margin-top:8px; width:100%; background:#0d1117; border:1px solid #30363d; border-radius:8px; padding:10px 12px; color:#e6edf3;" />
+            <div class="balance">Balance: <span id="uniBuyBalance">-</span></div>
+          </div>
+
+          <div class="swap-info">
+            <div class="info-row">
+              <span>Route</span>
+              <span id="uniRoute">-</span>
+            </div>
+            <div class="info-row">
+              <span>Estimated Gas</span>
+              <span id="uniGas">-</span>
+            </div>
+            <div class="info-row">
+              <span>Slippage</span>
+              <span><input id="uniSlippage" type="number" min="0.1" max="50" step="0.1" value="1" style="width:60px; background:#0d1117; border:1px solid #30363d; border-radius:6px; padding:4px 6px; color:#79c0ff; font-family: 'Courier New', monospace; text-align:right;" />%</span>
+            </div>
+            <div class="info-row">
+              <span>Min Receive</span>
+              <span id="uniMinReceive">-</span>
+            </div>
+            <div class="info-row">
+              <span>Allowance</span>
+              <span id="uniAllowance">-</span>
+            </div>
+          </div>
+
+          <button id="uniApproveBtn" class="btn-secondary">Approve Token</button>
+          <button id="uniSwapBtn" class="btn-primary">Swap</button>
+          <p id="uniStatus" class="hint"></p>
+        </div>
+      </section>
+
+      <section class="card">
         <h2>MAREV Pool</h2>
         <p class="hint">This swap box is the custom MAREV/USDC pool. Meme coins launched from the factory appear in the directories below and trade on the standard Base AMM.</p>
         <div class="swap-container">

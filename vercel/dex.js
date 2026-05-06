@@ -10,6 +10,8 @@ const IMPORT_STORAGE_KEY = "marev-base-token-imports";
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 const FIRE_COIN_ADDRESS = "0x1c78664aed3c83db40bfe1319e7461c3f5b6398d";
 const FIRE_COIN_FALLBACK_NAME = "Fire Coin";
+const ZEROEX_NATIVE_ADDRESS = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
+const ZEROEX_QUOTE_ENDPOINT = "/api/0x-quote";
 
 const ERC20_ABI = [
   "function name() view returns (string)",
@@ -97,6 +99,24 @@ const fireCoinUsdcLiquidityEl = document.getElementById("fireCoinUsdcLiquidity")
 const fireCoinTokenLiquidityEl = document.getElementById("fireCoinTokenLiquidity");
 const fireCoinStatusEl = document.getElementById("fireCoinStatus");
 const thirdwebWidgetStatusEl = document.getElementById("thirdwebWidgetStatus");
+
+const uniSellSelect = document.getElementById("uniSellSelect");
+const uniSellCustom = document.getElementById("uniSellCustom");
+const uniSellAmount = document.getElementById("uniSellAmount");
+const uniSellBalance = document.getElementById("uniSellBalance");
+const uniBuySelect = document.getElementById("uniBuySelect");
+const uniBuyCustom = document.getElementById("uniBuyCustom");
+const uniBuyAmount = document.getElementById("uniBuyAmount");
+const uniBuyBalance = document.getElementById("uniBuyBalance");
+const uniRouteEl = document.getElementById("uniRoute");
+const uniGasEl = document.getElementById("uniGas");
+const uniSlippageInput = document.getElementById("uniSlippage");
+const uniMinReceiveEl = document.getElementById("uniMinReceive");
+const uniAllowanceEl = document.getElementById("uniAllowance");
+const uniApproveBtn = document.getElementById("uniApproveBtn");
+const uniSwapBtn = document.getElementById("uniSwapBtn");
+const uniStatusEl = document.getElementById("uniStatus");
+const uniFlipBtn = document.getElementById("uniFlipBtn");
 
 let provider;
 let signer;
@@ -272,6 +292,7 @@ async function connectWallet() {
     if (!activeAccount) activeAccount = signerAddress;
     accountEl.textContent = activeAccount;
     await refreshData();
+    await refreshUniBalances();
     setStatus("Connected", "ok");
   } catch (error) {
     console.error("Connection error:", error);
@@ -1165,6 +1186,334 @@ async function loadLivePriceCard(address, nameFallback, symbolFallback) {
   return renderNotTrackedCard(nameFallback, symbolFallback, address);
 }
 
+const tokenDecimalsCache = new Map();
+
+async function getTokenDecimalsCached(address) {
+  if (!address || address === ZEROEX_NATIVE_ADDRESS) return 18;
+  const key = address.toLowerCase();
+  if (tokenDecimalsCache.has(key)) return tokenDecimalsCache.get(key);
+  try {
+    const decimals = Number(await getReadTokenContract(address).decimals());
+    tokenDecimalsCache.set(key, decimals);
+    return decimals;
+  } catch {
+    return 18;
+  }
+}
+
+async function getTokenSymbolSafe(address) {
+  if (!address || address === ZEROEX_NATIVE_ADDRESS) return "ETH";
+  try {
+    return await getReadTokenContract(address).symbol();
+  } catch {
+    return shortAddress(address);
+  }
+}
+
+function resolveUniToken(selectEl, customEl) {
+  const value = selectEl.value;
+  if (value === "custom") {
+    const custom = customEl.value.trim();
+    return custom || "";
+  }
+  if (value === "ETH") return ZEROEX_NATIVE_ADDRESS;
+  return value;
+}
+
+function isNativeEth(address) {
+  return address && address.toLowerCase() === ZEROEX_NATIVE_ADDRESS.toLowerCase();
+}
+
+function setUniStatus(text, cls) {
+  if (!uniStatusEl) return;
+  uniStatusEl.textContent = text || "";
+  uniStatusEl.style.color = cls === "warn" ? "#da3633" : cls === "ok" ? "#56d364" : "#8b949e";
+}
+
+function summarizeRoute(quote) {
+  const fills = quote?.route?.fills;
+  if (!Array.isArray(fills) || !fills.length) return "Direct";
+  const sources = [...new Set(fills.map((f) => f.source).filter(Boolean))];
+  return sources.length > 2 ? `${sources.slice(0, 2).join(", ")} +${sources.length - 2}` : sources.join(", ") || "Direct";
+}
+
+let uniLastQuote = null;
+let uniQuoteSeq = 0;
+let uniQuoteTimer = null;
+
+async function refreshUniQuote() {
+  uniLastQuote = null;
+  uniSwapBtn.disabled = true;
+  uniBuyAmount.value = "";
+  uniRouteEl.textContent = "-";
+  uniGasEl.textContent = "-";
+  uniMinReceiveEl.textContent = "-";
+
+  const sellAddress = resolveUniToken(uniSellSelect, uniSellCustom);
+  const buyAddress = resolveUniToken(uniBuySelect, uniBuyCustom);
+  const sellAmountRaw = parseFloat(uniSellAmount.value);
+
+  if (!sellAddress || !buyAddress) {
+    setUniStatus("Pick both sell and buy tokens.", "warn");
+    return;
+  }
+  if (sellAddress.toLowerCase() === buyAddress.toLowerCase()) {
+    setUniStatus("Sell and buy tokens must be different.", "warn");
+    return;
+  }
+  if (!Number.isFinite(sellAmountRaw) || sellAmountRaw <= 0) {
+    setUniStatus("Enter the amount you want to sell.", "");
+    return;
+  }
+
+  const sellDecimals = await getTokenDecimalsCached(sellAddress);
+  const buyDecimals = await getTokenDecimalsCached(buyAddress);
+  const normalized = decimalInputToString(sellAmountRaw, sellDecimals);
+  if (!normalized) {
+    setUniStatus("Sell amount is invalid for that token's decimals.", "warn");
+    return;
+  }
+
+  let sellAmountWei;
+  try {
+    sellAmountWei = ethers.parseUnits(normalized, sellDecimals);
+  } catch {
+    setUniStatus("Could not parse the sell amount.", "warn");
+    return;
+  }
+
+  const slippagePct = Math.max(0.1, Math.min(50, parseFloat(uniSlippageInput.value) || 1));
+  const slippageBps = Math.round(slippagePct * 100);
+
+  const params = new URLSearchParams({
+    chainId: "8453",
+    sellToken: sellAddress,
+    buyToken: buyAddress,
+    sellAmount: sellAmountWei.toString(),
+    slippageBps: String(slippageBps),
+  });
+  if (signerAddress) params.set("taker", signerAddress);
+
+  const seq = ++uniQuoteSeq;
+  setUniStatus("Fetching best route from 0x...", "");
+
+  let response;
+  try {
+    response = await fetch(`${ZEROEX_QUOTE_ENDPOINT}?${params.toString()}`);
+  } catch (error) {
+    if (seq !== uniQuoteSeq) return;
+    setUniStatus(error.message || "Quote request failed.", "warn");
+    return;
+  }
+  if (seq !== uniQuoteSeq) return;
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    setUniStatus(payload.message || payload.error || `Quote failed (${response.status})`, "warn");
+    return;
+  }
+
+  uniLastQuote = { ...payload, sellAddress, buyAddress, sellDecimals, buyDecimals, sellAmountWei };
+
+  const buyAmount = BigInt(payload.buyAmount || "0");
+  const minBuyAmount = BigInt(payload.minBuyAmount || payload.buyAmount || "0");
+  uniBuyAmount.value = formatDisplayAmount(parseFloat(ethers.formatUnits(buyAmount, buyDecimals)), buyDecimals);
+  uniMinReceiveEl.textContent = `${formatDisplayAmount(parseFloat(ethers.formatUnits(minBuyAmount, buyDecimals)), buyDecimals)}`;
+  uniRouteEl.textContent = summarizeRoute(payload);
+  uniGasEl.textContent = payload?.transaction?.gas ? Number(payload.transaction.gas).toLocaleString("en-US") : "-";
+
+  await refreshUniAllowance();
+  setUniStatus("Quote ready. Approve the sell token if needed, then Swap.", "ok");
+  uniSwapBtn.disabled = false;
+}
+
+async function refreshUniAllowance() {
+  if (!uniLastQuote) {
+    uniAllowanceEl.textContent = "-";
+    uniApproveBtn.disabled = true;
+    uniApproveBtn.textContent = "Approve Token";
+    return;
+  }
+  if (isNativeEth(uniLastQuote.sellAddress)) {
+    uniAllowanceEl.textContent = "Native ETH (no approval needed)";
+    uniApproveBtn.disabled = true;
+    uniApproveBtn.textContent = "No Approval Needed";
+    return;
+  }
+  const spender = uniLastQuote?.issues?.allowance?.spender || uniLastQuote?.transaction?.to;
+  if (!signerAddress || !spender) {
+    uniAllowanceEl.textContent = signerAddress ? "-" : "Connect wallet";
+    uniApproveBtn.disabled = true;
+    return;
+  }
+  try {
+    const token = getReadTokenContract(uniLastQuote.sellAddress);
+    const allowance = await token.allowance(signerAddress, spender);
+    const symbol = await getTokenSymbolSafe(uniLastQuote.sellAddress);
+    uniAllowanceEl.textContent = `${formatDisplayAmount(parseFloat(ethers.formatUnits(allowance, uniLastQuote.sellDecimals)), uniLastQuote.sellDecimals)} ${symbol}`;
+    const enough = allowance >= uniLastQuote.sellAmountWei;
+    uniApproveBtn.disabled = enough;
+    uniApproveBtn.textContent = enough ? `${symbol} Approved` : `Approve ${symbol}`;
+  } catch (error) {
+    console.error("uni allowance error", error);
+    uniAllowanceEl.textContent = "Error";
+    uniApproveBtn.disabled = true;
+  }
+}
+
+async function approveUniSell() {
+  if (!signer || !signerAddress) {
+    setUniStatus("Connect wallet first.", "warn");
+    return;
+  }
+  if (!uniLastQuote) {
+    setUniStatus("Get a quote first.", "warn");
+    return;
+  }
+  if (isNativeEth(uniLastQuote.sellAddress)) return;
+
+  const spender = uniLastQuote?.issues?.allowance?.spender || uniLastQuote?.transaction?.to;
+  if (!spender) {
+    setUniStatus("Quote did not include an allowance spender.", "warn");
+    return;
+  }
+
+  try {
+    const symbol = await getTokenSymbolSafe(uniLastQuote.sellAddress);
+    const token = getRunnerTokenContract(uniLastQuote.sellAddress, signer);
+    setUniStatus(`Approving ${symbol}...`, "");
+    const tx = await token.approve(spender, ethers.MaxUint256);
+    await tx.wait();
+    setUniStatus(`${symbol} approved.`, "ok");
+    await refreshUniAllowance();
+  } catch (error) {
+    console.error("uni approve error", error);
+    if (error?.code === 4001) {
+      setUniStatus("Approval rejected in MetaMask.", "warn");
+      return;
+    }
+    setUniStatus(error.message || "Approval failed.", "warn");
+  }
+}
+
+async function executeUniSwap() {
+  if (!signer || !signerAddress) {
+    setUniStatus("Connect wallet first.", "warn");
+    return;
+  }
+  if (!uniLastQuote?.transaction?.to || !uniLastQuote?.transaction?.data) {
+    setUniStatus("Refresh the quote before swapping.", "warn");
+    return;
+  }
+
+  try {
+    const network = await provider.getNetwork();
+    if (Number(network.chainId) !== 8453) {
+      setUniStatus("Switch MetaMask to Base mainnet.", "warn");
+      return;
+    }
+
+    const tx = uniLastQuote.transaction;
+    setUniStatus("Confirm the swap in MetaMask...", "");
+    const sent = await signer.sendTransaction({
+      to: tx.to,
+      data: tx.data,
+      value: tx.value ? BigInt(tx.value) : 0n,
+      gasLimit: tx.gas ? BigInt(tx.gas) : undefined,
+    });
+    setUniStatus(`Swap submitted: ${sent.hash}. Waiting for confirmation...`, "");
+    await sent.wait();
+    setUniStatus(`Swap confirmed in tx ${sent.hash}.`, "ok");
+    uniSellAmount.value = "";
+    uniBuyAmount.value = "";
+    uniLastQuote = null;
+    await Promise.all([refreshUniBalances(), refreshUniAllowance()]);
+  } catch (error) {
+    console.error("uni swap error", error);
+    if (error?.code === 4001 || error?.code === "ACTION_REJECTED") {
+      setUniStatus("Swap rejected in MetaMask.", "warn");
+      return;
+    }
+    setUniStatus(error.shortMessage || error.message || "Swap failed.", "warn");
+  }
+}
+
+async function refreshUniBalances() {
+  if (!activeAccount) {
+    uniSellBalance.textContent = "-";
+    uniBuyBalance.textContent = "-";
+    return;
+  }
+  const sellAddress = resolveUniToken(uniSellSelect, uniSellCustom);
+  const buyAddress = resolveUniToken(uniBuySelect, uniBuyCustom);
+  await Promise.all([
+    populateUniBalance(sellAddress, uniSellBalance),
+    populateUniBalance(buyAddress, uniBuyBalance),
+  ]);
+}
+
+async function populateUniBalance(address, el) {
+  if (!address || !activeAccount) {
+    el.textContent = "-";
+    return;
+  }
+  try {
+    if (isNativeEth(address)) {
+      const balance = await readProvider.getBalance(activeAccount);
+      el.textContent = `${formatDisplayAmount(parseFloat(ethers.formatEther(balance)), 18)} ETH`;
+      return;
+    }
+    const decimals = await getTokenDecimalsCached(address);
+    const symbol = await getTokenSymbolSafe(address);
+    const raw = await getReadTokenContract(address).balanceOf(activeAccount);
+    el.textContent = `${formatDisplayAmount(parseFloat(ethers.formatUnits(raw, decimals)), decimals)} ${symbol}`;
+  } catch {
+    el.textContent = "-";
+  }
+}
+
+function scheduleUniQuote() {
+  if (uniQuoteTimer) clearTimeout(uniQuoteTimer);
+  uniQuoteTimer = setTimeout(refreshUniQuote, 350);
+}
+
+function flipUniSwap() {
+  const sellSelected = uniSellSelect.value;
+  const sellCustom = uniSellCustom.value;
+  uniSellSelect.value = uniBuySelect.value;
+  uniSellCustom.value = uniBuyCustom.value;
+  uniBuySelect.value = sellSelected;
+  uniBuyCustom.value = sellCustom;
+  uniSellCustom.style.display = uniSellSelect.value === "custom" ? "" : "none";
+  uniBuyCustom.style.display = uniBuySelect.value === "custom" ? "" : "none";
+  uniSellAmount.value = uniBuyAmount.value;
+  refreshUniBalances();
+  scheduleUniQuote();
+}
+
+function bindUniListeners() {
+  if (!uniSellSelect) return;
+
+  const onSelectChange = (selectEl, customEl) => {
+    customEl.style.display = selectEl.value === "custom" ? "" : "none";
+    refreshUniBalances();
+    scheduleUniQuote();
+  };
+
+  uniSellSelect.addEventListener("change", () => onSelectChange(uniSellSelect, uniSellCustom));
+  uniBuySelect.addEventListener("change", () => onSelectChange(uniBuySelect, uniBuyCustom));
+  uniSellCustom.addEventListener("input", () => { refreshUniBalances(); scheduleUniQuote(); });
+  uniBuyCustom.addEventListener("input", () => { refreshUniBalances(); scheduleUniQuote(); });
+  uniSellAmount.addEventListener("input", scheduleUniQuote);
+  uniSlippageInput.addEventListener("input", scheduleUniQuote);
+  uniApproveBtn.addEventListener("click", approveUniSell);
+  uniSwapBtn.addEventListener("click", executeUniSwap);
+  uniFlipBtn.addEventListener("click", flipUniSwap);
+
+  uniSwapBtn.disabled = true;
+  uniApproveBtn.disabled = true;
+}
+
 async function loadLiveMarketData() {
   const container = document.getElementById("livePricesGrid");
   if (!container) return;
@@ -1205,11 +1554,12 @@ function initApp() {
   approveButton.addEventListener("click", approveCurrentToken);
   swapButton.addEventListener("click", executeSwap);
   refreshButton.addEventListener("click", async () => {
-    await Promise.all([refreshData(), loadFactoryTokens(), renderImportedBaseTokens(), loadBaseMarketFeed(), loadFeaturedFireCoin(), loadLiveMarketData()]);
+    await Promise.all([refreshData(), loadFactoryTokens(), renderImportedBaseTokens(), loadBaseMarketFeed(), loadFeaturedFireCoin(), loadLiveMarketData(), refreshUniBalances()]);
   });
   refreshFactoryTokensButton.addEventListener("click", loadFactoryTokens);
   refreshMarketFeedButton.addEventListener("click", loadBaseMarketFeed);
   document.getElementById("refreshLivePrices")?.addEventListener("click", loadLiveMarketData);
+  bindUniListeners();
   switchButton.addEventListener("click", switchToMainnet);
   downloadButton.addEventListener("click", downloadDeploymentInfo);
   importBaseTokenButton.addEventListener("click", () => importBaseToken(baseTokenAddressInput.value));
