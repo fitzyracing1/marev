@@ -1,140 +1,295 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>MAREV Launch + Airdrop | Launch a Base Token with a Built-in Airdrop</title>
-    <meta
-      name="description"
-      content="Launch a Base ERC-20 token and configure a Merkle airdrop in one flow. Share a claim link, recipients claim with a single transaction."
-    />
-    <link rel="canonical" href="https://marev-bay.vercel.app/launch" />
-    <link rel="stylesheet" href="styles.css" />
-  </head>
-  <body>
-    <div class="container">
-      <header>
-        <h1>Launch + Airdrop</h1>
-        <p>Create a Base ERC-20 and set up a Merkle airdrop in one flow. Share one link and your recipients claim themselves.</p>
-        <div class="header-buttons">
-          <a href="/" class="btn-secondary">Home</a>
-          <a href="/dex" class="btn-secondary">DEX</a>
-          <a href="/factory" class="btn-secondary">Token-Only Factory</a>
-        </div>
-      </header>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Earthenware Launch — Base Token + Airdrop in One Flow</title>
+<meta name="description" content="Launch a Base ERC-20 and configure a Merkle airdrop in one transaction set. Share one link, recipients claim themselves. Powered by 3XB and Earthenware Computer.">
+<link rel="canonical" href="https://launch.earthenwarecomputer.com/">
+<style>
+:root {
+  --bg: #07080f;
+  --surface: #0e1018;
+  --surface-2: #14172a;
+  --border: #1e2133;
+  --cyan: #7df7ff;
+  --pink: #ff6b9d;
+  --yellow: #ffe66d;
+  --green: #a8ff78;
+  --red: #ff6b6b;
+  --text: #c8cfe0;
+  --muted: #5a6080;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; line-height: 1.6; min-height: 100%; }
+a { color: var(--cyan); text-decoration: none; }
+a:hover { color: #fff; }
 
-      <section class="card">
-        <div class="row">
-          <button id="connectButton">Connect MetaMask</button>
-          <button id="switchBaseButton" class="btn-secondary">Switch to Base</button>
-          <span id="status" class="status">Not connected</span>
-        </div>
-        <div class="info-grid">
-          <div>
-            <label>Wallet</label>
-            <div id="account" class="mono">-</div>
-          </div>
-          <div>
-            <label>Network</label>
-            <div id="network" class="mono">-</div>
-          </div>
-          <div>
-            <label>Launch Fee</label>
-            <div id="launchFee" class="mono">-</div>
-          </div>
-        </div>
-        <p id="contractStatus" class="hint">Loading deployment configuration...</p>
-      </section>
+nav {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 32px; border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; background: rgba(7,8,15,0.92); backdrop-filter: blur(12px); z-index: 100;
+}
+.logo { font-family: monospace; font-size: 18px; color: var(--cyan); font-weight: bold; letter-spacing: 2px; }
+.logo span { color: var(--pink); }
+.nav-links { display: flex; gap: 24px; align-items: center; font-size: 14px; }
+.nav-links a { color: var(--text); }
+.nav-links a:hover { color: var(--cyan); }
+.nav-cta {
+  background: var(--cyan); color: #000 !important; padding: 8px 18px; border-radius: 6px;
+  font-weight: 600; font-size: 13px;
+}
+.nav-cta:hover { background: #fff; }
 
-      <section class="card">
-        <h2>Token Details</h2>
-        <div class="info-grid">
-          <div>
-            <label for="tokenName">Token Name</label>
-            <input id="tokenName" class="editor-input" type="text" placeholder="e.g. Pepe Coin" />
-          </div>
-          <div>
-            <label for="tokenSymbol">Symbol</label>
-            <input id="tokenSymbol" class="editor-input" type="text" placeholder="e.g. PEPE" />
-          </div>
-          <div>
-            <label for="tokenDecimals">Decimals</label>
-            <input id="tokenDecimals" class="editor-input" type="number" value="18" min="1" max="18" />
-          </div>
-          <div>
-            <label for="tokenSupply">Total Supply</label>
-            <input id="tokenSupply" class="editor-input" type="number" placeholder="1000000" min="0" />
-          </div>
-        </div>
-      </section>
+.shell { max-width: 980px; margin: 0 auto; padding: 48px 32px 80px; }
 
-      <section class="card">
-        <h2>Airdrop Recipients</h2>
-        <p class="hint">One recipient per line as <code>address,amount</code>. Amounts are in human units of your token (e.g. <code>1000</code> = 1000 tokens at the configured decimals). Lines starting with <code>#</code> are ignored.</p>
-        <textarea id="recipientList" class="editor-textarea" style="min-height: 220px;" spellcheck="false" placeholder="0xAbC...,500
+.hero {
+  text-align: center; padding: 36px 0 56px;
+  background: radial-gradient(ellipse 80% 50% at 50% 0%, #0d1a2e 0%, transparent 70%);
+}
+.hero-eyebrow {
+  display: inline-block; padding: 4px 12px; border: 1px solid var(--border); border-radius: 999px;
+  font-family: monospace; font-size: 11px; color: var(--cyan); letter-spacing: 2px; margin-bottom: 18px;
+}
+.hero h1 { font-size: 40px; line-height: 1.15; font-weight: 700; color: #fff; margin-bottom: 14px; }
+.hero h1 .accent { color: var(--cyan); }
+.hero p { color: var(--muted); font-size: 16px; max-width: 580px; margin: 0 auto; }
+
+.card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+  padding: 24px; margin-bottom: 20px;
+}
+.card h2 {
+  font-size: 14px; font-family: monospace; color: var(--cyan); letter-spacing: 2px;
+  text-transform: uppercase; margin-bottom: 8px;
+}
+.card-help { color: var(--muted); font-size: 13px; margin-bottom: 18px; }
+.card-help code { font-family: 'JetBrains Mono', Consolas, monospace; background: var(--surface-2); padding: 1px 6px; border-radius: 3px; color: var(--text); font-size: 12px; }
+
+.row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.connect-row { gap: 14px; align-items: center; }
+
+button, .btn {
+  cursor: pointer; font-family: inherit; font-size: 14px; font-weight: 600;
+  padding: 10px 18px; border-radius: 7px; border: 1px solid var(--border);
+  background: var(--surface-2); color: var(--text); transition: all .15s;
+}
+button:hover, .btn:hover { border-color: var(--cyan); color: #fff; }
+button:disabled { opacity: 0.45; cursor: not-allowed; }
+button:disabled:hover { border-color: var(--border); color: var(--text); }
+
+.btn-primary {
+  background: var(--cyan); color: #000; border-color: var(--cyan); font-weight: 700;
+}
+.btn-primary:hover { background: #fff; border-color: #fff; color: #000; }
+.btn-primary:disabled { background: var(--cyan); color: #000; opacity: 0.4; }
+
+.btn-ghost { background: transparent; }
+.btn-ghost:hover { border-color: #fff; color: #fff; background: transparent; }
+
+.tag {
+  display: inline-block; padding: 4px 10px; border-radius: 999px; font-family: monospace;
+  font-size: 11px; letter-spacing: 1.5px; background: var(--surface-2); color: var(--muted);
+}
+.tag.ok { color: var(--green); border: 1px solid #2a4633; }
+.tag.warn { color: var(--yellow); border: 1px solid #463e2a; }
+.tag.err { color: var(--red); border: 1px solid #4a2a2a; }
+
+label {
+  display: block; font-family: monospace; font-size: 11px; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 6px;
+}
+
+.input, input[type=text], input[type=number], textarea {
+  width: 100%; background: var(--bg); color: var(--text); border: 1px solid var(--border);
+  border-radius: 7px; padding: 11px 14px; font-size: 14px; font-family: inherit;
+  transition: border-color .15s;
+}
+.input:focus, input:focus, textarea:focus { outline: none; border-color: var(--cyan); }
+textarea { resize: vertical; line-height: 1.55; font-family: 'JetBrains Mono', Consolas, monospace; font-size: 13px; }
+
+.grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+
+.field-readout {
+  background: var(--bg); border: 1px solid var(--border); border-radius: 7px;
+  padding: 10px 14px; font-family: 'JetBrains Mono', Consolas, monospace; font-size: 12px;
+  color: var(--text); word-break: break-all; min-height: 38px;
+}
+.field-readout.dim { color: var(--muted); }
+
+.section-title-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; margin-bottom: 6px; }
+.section-title-row h2 { margin-bottom: 4px; }
+
+.actions-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+
+.status-line {
+  font-family: 'JetBrains Mono', Consolas, monospace; font-size: 12px;
+  color: var(--muted); margin-top: 12px; min-height: 18px;
+  white-space: pre-wrap;
+}
+.status-line.ok { color: var(--green); }
+.status-line.warn { color: var(--yellow); }
+.status-line.err { color: var(--red); }
+
+.result-box {
+  display: none; margin-top: 18px; padding: 16px;
+  background: rgba(125, 247, 255, 0.04); border: 1px solid rgba(125, 247, 255, 0.25); border-radius: 8px;
+}
+.result-box.shown { display: block; }
+.result-box .label { color: var(--cyan); }
+
+footer { margin-top: 60px; padding-top: 24px; border-top: 1px solid var(--border); color: var(--muted); font-size: 12px; text-align: center; }
+
+@media (max-width: 720px) {
+  .hero h1 { font-size: 30px; }
+  .nav-links a:not(.nav-cta) { display: none; }
+  nav { padding: 14px 18px; }
+  .shell { padding: 24px 18px 60px; }
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="https://earthenwarecomputer.com" class="logo" style="color: var(--cyan);">EARTH<span>WARE</span></a>
+  <div class="nav-links">
+    <a href="https://earthenwarecomputer.com">3XB</a>
+    <a href="claim.html">Claim Airdrop</a>
+    <a href="https://github.com/fitzyracing1/marev" target="_blank">GitHub ↗</a>
+  </div>
+</nav>
+
+<div class="shell">
+
+  <div class="hero">
+    <span class="hero-eyebrow">// LAUNCH + AIRDROP</span>
+    <h1>Ship a <span class="accent">Base ERC-20</span><br>with a built-in airdrop.</h1>
+    <p>Create the token, deploy a Merkle distributor, fund it, publish a claim link — in one flow. Recipients claim themselves with one transaction.</p>
+  </div>
+
+  <div class="card">
+    <h2>// WALLET</h2>
+    <div class="row connect-row">
+      <button id="connectButton" class="btn-primary">Connect MetaMask</button>
+      <button id="switchBaseButton">Switch to Base</button>
+      <span id="status" class="tag">DISCONNECTED</span>
+    </div>
+    <div class="grid" style="margin-top: 18px;">
+      <div>
+        <label>Wallet</label>
+        <div id="account" class="field-readout dim">—</div>
+      </div>
+      <div>
+        <label>Network</label>
+        <div id="network" class="field-readout dim">—</div>
+      </div>
+      <div>
+        <label>Launch Fee</label>
+        <div id="launchFee" class="field-readout dim">—</div>
+      </div>
+    </div>
+    <p id="contractStatus" class="status-line">Loading deployment configuration…</p>
+  </div>
+
+  <div class="card">
+    <h2>// TOKEN DETAILS</h2>
+    <p class="card-help">Standard ERC-20. Initial supply mints to your wallet; the airdrop allocation is then transferred to the distributor.</p>
+    <div class="grid">
+      <div>
+        <label for="tokenName">Name</label>
+        <input id="tokenName" type="text" placeholder="e.g. Pepe Coin" />
+      </div>
+      <div>
+        <label for="tokenSymbol">Symbol</label>
+        <input id="tokenSymbol" type="text" placeholder="e.g. PEPE" />
+      </div>
+      <div>
+        <label for="tokenDecimals">Decimals</label>
+        <input id="tokenDecimals" type="number" value="18" min="1" max="18" />
+      </div>
+      <div>
+        <label for="tokenSupply">Total Supply</label>
+        <input id="tokenSupply" type="number" placeholder="1000000" min="0" />
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>// AIRDROP RECIPIENTS</h2>
+    <p class="card-help">One per line as <code>address,amount</code>. Amounts are in human units (e.g. <code>1000</code> = 1000 tokens at the configured decimals). Lines starting with <code>#</code> are ignored.</p>
+    <textarea id="recipientList" rows="9" spellcheck="false" placeholder="0xAbC...,500
 0xDef...,1000
 0x123...,250"></textarea>
-        <div class="token-card-actions">
-          <button id="validateRecipientsButton" class="btn-secondary">Validate Recipients</button>
-          <button id="loadSampleButton" class="btn-secondary">Load Sample List</button>
-        </div>
-        <div class="info-grid" style="margin-top: 16px;">
-          <div>
-            <label>Recipients</label>
-            <div id="recipientCount" class="mono">-</div>
-          </div>
-          <div>
-            <label>Total Airdrop</label>
-            <div id="recipientTotal" class="mono">-</div>
-          </div>
-          <div>
-            <label>Creator Keeps</label>
-            <div id="creatorKeeps" class="mono">-</div>
-          </div>
-          <div>
-            <label>Merkle Root</label>
-            <div id="merkleRootDisplay" class="mono">-</div>
-          </div>
-        </div>
-        <p id="recipientStatus" class="hint"></p>
-      </section>
-
-      <section class="card">
-        <h2>Optional: Claim Window</h2>
-        <p class="hint">If set, recipients can only claim before this date. After expiry the creator can call <code>sweep()</code> on the distributor to recover unclaimed tokens. Leave empty for no expiry.</p>
-        <div class="info-grid">
-          <div>
-            <label for="expiryDays">Days Until Expiry</label>
-            <input id="expiryDays" class="editor-input" type="number" min="0" placeholder="e.g. 30 (leave empty for no expiry)" />
-          </div>
-        </div>
-      </section>
-
-      <section class="card">
-        <h2>Launch</h2>
-        <p class="hint">Launch will create the token, deploy a fresh airdrop distributor, fund it, and publish your claim data. You'll confirm 3 transactions in MetaMask. Total cost: launch fee (above) + ~$0.50 in Base gas.</p>
-        <div class="token-card-actions">
-          <button id="launchButton" class="btn-primary">Launch + Setup Airdrop</button>
-        </div>
-        <p id="launchStatus" class="hint"></p>
-        <div id="launchResult" style="display: none;" class="info-grid" style="margin-top: 16px;">
-          <div>
-            <label>Token Address</label>
-            <div id="resultTokenAddress" class="mono">-</div>
-          </div>
-          <div>
-            <label>Distributor Address</label>
-            <div id="resultDistributorAddress" class="mono">-</div>
-          </div>
-          <div>
-            <label>Claim Link</label>
-            <div id="resultClaimLink" class="mono">-</div>
-          </div>
-        </div>
-      </section>
+    <div class="actions-row">
+      <button id="validateRecipientsButton">Validate Recipients</button>
+      <button id="loadSampleButton" class="btn-ghost">Load Sample List</button>
     </div>
+    <div class="grid" style="margin-top: 18px;">
+      <div>
+        <label>Recipients</label>
+        <div id="recipientCount" class="field-readout dim">—</div>
+      </div>
+      <div>
+        <label>Total Airdrop</label>
+        <div id="recipientTotal" class="field-readout dim">—</div>
+      </div>
+      <div>
+        <label>Creator Keeps</label>
+        <div id="creatorKeeps" class="field-readout dim">—</div>
+      </div>
+      <div>
+        <label>Merkle Root</label>
+        <div id="merkleRootDisplay" class="field-readout dim">—</div>
+      </div>
+    </div>
+    <p id="recipientStatus" class="status-line"></p>
+  </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.2/dist/ethers.umd.min.js"></script>
-    <script src="launch.js"></script>
-  </body>
+  <div class="card">
+    <h2>// CLAIM WINDOW</h2>
+    <p class="card-help">Optional. After expiry the creator can call <code>sweep()</code> to recover unclaimed tokens. Leave blank for no expiry.</p>
+    <div class="grid">
+      <div>
+        <label for="expiryDays">Days Until Expiry</label>
+        <input id="expiryDays" type="number" min="0" placeholder="e.g. 30" />
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>// LAUNCH</h2>
+    <p class="card-help">3 MetaMask confirmations: create token, deploy distributor, fund distributor. Then a 4th step publishes the claim data. Total cost: launch fee + ~$0.50 in Base gas.</p>
+    <div class="actions-row">
+      <button id="launchButton" class="btn-primary">Launch + Setup Airdrop</button>
+    </div>
+    <p id="launchStatus" class="status-line"></p>
+    <div id="launchResult" class="result-box">
+      <div class="grid">
+        <div>
+          <label class="label">Token Address</label>
+          <div id="resultTokenAddress" class="field-readout">—</div>
+        </div>
+        <div>
+          <label class="label">Distributor Address</label>
+          <div id="resultDistributorAddress" class="field-readout">—</div>
+        </div>
+        <div style="grid-column: 1 / -1;">
+          <label class="label">Shareable Claim Link</label>
+          <div id="resultClaimLink" class="field-readout">—</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    Built on Base. Contracts:
+    <a href="https://basescan.org/address/0x878626f220302f0F409F009fb3D4FB8b511A4faE" target="_blank">Token Factory</a> ·
+    <a href="https://basescan.org/address/0xDD591a17E6Af45451BA93e3aC9E30F62db93ad55" target="_blank">Distributor Factory</a>
+  </footer>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/ethers@6.13.2/dist/ethers.umd.min.js"></script>
+<script src="launch.js"></script>
+</body>
 </html>

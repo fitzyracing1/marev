@@ -1,92 +1,237 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Claim Airdrop | MAREV</title>
-    <meta name="description" content="Claim your Base token airdrop allocation. Enter the token address or open the claim link the project shared." />
-    <link rel="canonical" href="https://marev-bay.vercel.app/claim" />
-    <link rel="stylesheet" href="styles.css" />
-  </head>
-  <body>
-    <div class="container">
-      <header>
-        <h1>Claim Airdrop</h1>
-        <p>Enter the token address (or open the claim link the project shared) and claim your allocation.</p>
-        <div class="header-buttons">
-          <a href="/" class="btn-secondary">Home</a>
-          <a href="/launch" class="btn-secondary">Launch + Airdrop</a>
-        </div>
-      </header>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Claim Airdrop — Earthenware Launch</title>
+<meta name="description" content="Claim your Base token airdrop allocation. Enter the token address or follow the link the project shared." />
+<link rel="canonical" href="https://launch.earthenwarecomputer.com/claim" />
+<style>
+:root {
+  --bg: #07080f;
+  --surface: #0e1018;
+  --surface-2: #14172a;
+  --border: #1e2133;
+  --cyan: #7df7ff;
+  --pink: #ff6b9d;
+  --yellow: #ffe66d;
+  --green: #a8ff78;
+  --red: #ff6b6b;
+  --text: #c8cfe0;
+  --muted: #5a6080;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; line-height: 1.6; min-height: 100%; }
+a { color: var(--cyan); text-decoration: none; }
+a:hover { color: #fff; }
 
-      <section class="card">
-        <div class="row">
-          <button id="connectButton">Connect MetaMask</button>
-          <span id="status" class="status">Not connected</span>
-        </div>
-        <div class="info-grid">
-          <div>
-            <label>Wallet</label>
-            <div id="account" class="mono">-</div>
-          </div>
-          <div>
-            <label>Network</label>
-            <div id="network" class="mono">-</div>
-          </div>
-        </div>
-      </section>
+nav {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 32px; border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; background: rgba(7,8,15,0.92); backdrop-filter: blur(12px); z-index: 100;
+}
+.logo { font-family: monospace; font-size: 18px; color: var(--cyan); font-weight: bold; letter-spacing: 2px; }
+.logo span { color: var(--pink); }
+.nav-links { display: flex; gap: 24px; align-items: center; font-size: 14px; }
+.nav-links a { color: var(--text); }
+.nav-links a:hover { color: var(--cyan); }
 
-      <section class="card">
-        <h2>Airdrop Lookup</h2>
-        <div class="token-import">
-          <input id="tokenAddressInput" type="text" placeholder="Token address (0x...)" />
-          <button id="loadAirdropButton">Load Airdrop</button>
-        </div>
-        <p id="airdropStatus" class="hint">Paste a token address or use a claim link.</p>
-      </section>
+.shell { max-width: 720px; margin: 0 auto; padding: 48px 32px 80px; }
 
-      <section class="card" id="airdropDetailsCard" style="display: none;">
-        <h2>Airdrop Details</h2>
-        <div class="info-grid">
-          <div>
-            <label>Token</label>
-            <div id="airdropTokenName" class="mono">-</div>
-          </div>
-          <div>
-            <label>Distributor</label>
-            <div id="airdropDistributor" class="mono">-</div>
-          </div>
-          <div>
-            <label>Expiry</label>
-            <div id="airdropExpiry" class="mono">-</div>
-          </div>
-          <div>
-            <label>Created</label>
-            <div id="airdropCreated" class="mono">-</div>
-          </div>
-        </div>
-      </section>
+.hero {
+  text-align: center; padding: 24px 0 48px;
+  background: radial-gradient(ellipse 80% 50% at 50% 0%, #0d1a2e 0%, transparent 70%);
+}
+.hero-eyebrow {
+  display: inline-block; padding: 4px 12px; border: 1px solid var(--border); border-radius: 999px;
+  font-family: monospace; font-size: 11px; color: var(--cyan); letter-spacing: 2px; margin-bottom: 18px;
+}
+.hero h1 { font-size: 36px; line-height: 1.15; font-weight: 700; color: #fff; margin-bottom: 12px; }
+.hero h1 .accent { color: var(--cyan); }
+.hero p { color: var(--muted); font-size: 15px; max-width: 520px; margin: 0 auto; }
 
-      <section class="card" id="yourClaimCard" style="display: none;">
-        <h2>Your Allocation</h2>
-        <div class="info-grid">
-          <div>
-            <label>Allocation</label>
-            <div id="yourAllocation" class="mono">-</div>
-          </div>
-          <div>
-            <label>Status</label>
-            <div id="yourClaimStatus" class="mono">-</div>
-          </div>
-        </div>
-        <div class="token-card-actions">
-          <button id="claimButton" class="btn-primary">Claim</button>
-        </div>
-        <p id="claimStatusText" class="hint"></p>
-      </section>
+.card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+  padding: 24px; margin-bottom: 18px;
+}
+.card h2 {
+  font-size: 14px; font-family: monospace; color: var(--cyan); letter-spacing: 2px;
+  text-transform: uppercase; margin-bottom: 12px;
+}
+.card-help { color: var(--muted); font-size: 13px; margin-bottom: 14px; }
+
+.row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+
+button, .btn {
+  cursor: pointer; font-family: inherit; font-size: 14px; font-weight: 600;
+  padding: 10px 18px; border-radius: 7px; border: 1px solid var(--border);
+  background: var(--surface-2); color: var(--text); transition: all .15s;
+}
+button:hover, .btn:hover { border-color: var(--cyan); color: #fff; }
+button:disabled { opacity: 0.45; cursor: not-allowed; }
+button:disabled:hover { border-color: var(--border); color: var(--text); }
+
+.btn-primary {
+  background: var(--cyan); color: #000; border-color: var(--cyan); font-weight: 700;
+  padding: 12px 22px; font-size: 15px;
+}
+.btn-primary:hover { background: #fff; border-color: #fff; color: #000; }
+.btn-primary:disabled { background: var(--cyan); color: #000; opacity: 0.4; }
+
+.tag {
+  display: inline-block; padding: 4px 10px; border-radius: 999px; font-family: monospace;
+  font-size: 11px; letter-spacing: 1.5px; background: var(--surface-2); color: var(--muted);
+}
+.tag.ok { color: var(--green); border: 1px solid #2a4633; }
+.tag.warn { color: var(--yellow); border: 1px solid #463e2a; }
+.tag.err { color: var(--red); border: 1px solid #4a2a2a; }
+
+label {
+  display: block; font-family: monospace; font-size: 11px; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 6px;
+}
+
+.input, input[type=text] {
+  width: 100%; background: var(--bg); color: var(--text); border: 1px solid var(--border);
+  border-radius: 7px; padding: 11px 14px; font-size: 14px; font-family: inherit;
+  transition: border-color .15s;
+}
+.input:focus, input:focus { outline: none; border-color: var(--cyan); }
+
+.grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+
+.field-readout {
+  background: var(--bg); border: 1px solid var(--border); border-radius: 7px;
+  padding: 10px 14px; font-family: 'JetBrains Mono', Consolas, monospace; font-size: 12px;
+  color: var(--text); word-break: break-all; min-height: 38px;
+}
+.field-readout.dim { color: var(--muted); }
+
+.lookup-row { display: flex; gap: 10px; }
+.lookup-row input { flex: 1; }
+
+.allocation-banner {
+  text-align: center; padding: 24px; border-radius: 12px;
+  background: radial-gradient(ellipse 60% 80% at 50% 0%, rgba(125,247,255,0.08) 0%, transparent 70%);
+  border: 1px solid var(--border); margin-bottom: 16px;
+}
+.allocation-banner .label-small {
+  font-family: monospace; font-size: 11px; letter-spacing: 2px; color: var(--muted); margin-bottom: 8px;
+}
+.allocation-banner .amount {
+  font-size: 36px; font-weight: 700; color: var(--cyan); font-family: 'JetBrains Mono', Consolas, monospace;
+  margin-bottom: 4px;
+}
+.allocation-banner .amount.greyed { color: var(--muted); }
+.allocation-banner .symbol { color: var(--text); font-size: 16px; font-weight: 400; }
+
+.status-line {
+  font-family: 'JetBrains Mono', Consolas, monospace; font-size: 12px;
+  color: var(--muted); margin-top: 12px; min-height: 18px; white-space: pre-wrap;
+}
+.status-line.ok { color: var(--green); }
+.status-line.warn { color: var(--yellow); }
+.status-line.err { color: var(--red); }
+
+footer { margin-top: 60px; padding-top: 24px; border-top: 1px solid var(--border); color: var(--muted); font-size: 12px; text-align: center; }
+
+@media (max-width: 720px) {
+  .hero h1 { font-size: 28px; }
+  nav { padding: 14px 18px; }
+  .shell { padding: 24px 18px 60px; }
+  .lookup-row { flex-direction: column; }
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="https://earthenwarecomputer.com" class="logo" style="color: var(--cyan);">EARTH<span>WARE</span></a>
+  <div class="nav-links">
+    <a href="https://earthenwarecomputer.com">3XB</a>
+    <a href="/">Launch a Token</a>
+    <a href="https://github.com/fitzyracing1/marev" target="_blank">GitHub ↗</a>
+  </div>
+</nav>
+
+<div class="shell">
+
+  <div class="hero">
+    <span class="hero-eyebrow">// CLAIM AIRDROP</span>
+    <h1>Claim your <span class="accent">Base token</span> allocation.</h1>
+    <p>Enter the token address (or open the claim link the project shared) and connect your wallet.</p>
+  </div>
+
+  <div class="card">
+    <h2>// WALLET</h2>
+    <div class="row">
+      <button id="connectButton" class="btn-primary">Connect MetaMask</button>
+      <span id="status" class="tag">DISCONNECTED</span>
     </div>
+    <div class="grid" style="margin-top: 18px;">
+      <div>
+        <label>Wallet</label>
+        <div id="account" class="field-readout dim">—</div>
+      </div>
+      <div>
+        <label>Network</label>
+        <div id="network" class="field-readout dim">—</div>
+      </div>
+    </div>
+  </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.2/dist/ethers.umd.min.js"></script>
-    <script src="claim.js"></script>
-  </body>
+  <div class="card">
+    <h2>// AIRDROP LOOKUP</h2>
+    <div class="lookup-row">
+      <input id="tokenAddressInput" type="text" placeholder="Paste token address (0x…)" />
+      <button id="loadAirdropButton">Load</button>
+    </div>
+    <p id="airdropStatus" class="status-line">Paste a token address or follow a claim link.</p>
+  </div>
+
+  <div class="card" id="airdropDetailsCard" style="display: none;">
+    <h2>// AIRDROP DETAILS</h2>
+    <div class="grid">
+      <div>
+        <label>Token</label>
+        <div id="airdropTokenName" class="field-readout">—</div>
+      </div>
+      <div>
+        <label>Distributor</label>
+        <div id="airdropDistributor" class="field-readout">—</div>
+      </div>
+      <div>
+        <label>Expiry</label>
+        <div id="airdropExpiry" class="field-readout">—</div>
+      </div>
+      <div>
+        <label>Created</label>
+        <div id="airdropCreated" class="field-readout">—</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" id="yourClaimCard" style="display: none;">
+    <h2>// YOUR ALLOCATION</h2>
+    <div class="allocation-banner">
+      <div class="label-small">YOU CAN CLAIM</div>
+      <div id="yourAllocation" class="amount greyed">—</div>
+      <div id="yourClaimStatus" class="tag" style="margin-top: 10px;">—</div>
+    </div>
+    <div style="text-align: center;">
+      <button id="claimButton" class="btn-primary" style="min-width: 180px;">Claim</button>
+    </div>
+    <p id="claimStatusText" class="status-line" style="text-align: center;"></p>
+  </div>
+
+  <footer>
+    Built on Base. Distributors deployed by
+    <a href="https://basescan.org/address/0xDD591a17E6Af45451BA93e3aC9E30F62db93ad55" target="_blank">Earthenware Distributor Factory</a>.
+  </footer>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/ethers@6.13.2/dist/ethers.umd.min.js"></script>
+<script src="claim.js"></script>
+</body>
 </html>

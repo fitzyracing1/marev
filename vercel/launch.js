@@ -32,22 +32,19 @@ const $ = (id) => document.getElementById(id);
 
 function setStatus(text, cls = "") {
   const el = $("status");
-  el.textContent = text;
-  el.className = "status";
+  el.textContent = (text || "").toUpperCase();
+  el.className = "tag";
   if (cls) el.classList.add(cls);
 }
 
-function setLaunchStatus(text, cls = "") {
-  const el = $("launchStatus");
+function setStatusLine(id, text, cls = "") {
+  const el = $(id);
   el.textContent = text || "";
-  el.style.color = cls === "warn" ? "#da3633" : cls === "ok" ? "#56d364" : "#8b949e";
+  el.className = "status-line";
+  if (cls) el.classList.add(cls);
 }
-
-function setRecipientStatus(text, cls = "") {
-  const el = $("recipientStatus");
-  el.textContent = text || "";
-  el.style.color = cls === "warn" ? "#da3633" : cls === "ok" ? "#56d364" : "#8b949e";
-}
+function setLaunchStatus(text, cls = "") { setStatusLine("launchStatus", text, cls); }
+function setRecipientStatus(text, cls = "") { setStatusLine("recipientStatus", text, cls); }
 
 function shortAddress(a) {
   return a ? `${a.slice(0, 6)}...${a.slice(-4)}` : "-";
@@ -64,25 +61,32 @@ async function loadDeploymentConfig() {
     console.error("deployment config load failed", error);
   }
 
-  $("contractStatus").innerHTML = `
-    Factory: <code>${shortAddress(factoryDeployment.factory)}</code> ·
-    Distributor Factory: <code>${
-      factoryDeployment.merkleDistributorFactory && factoryDeployment.merkleDistributorFactory !== ZERO_ADDRESS
-        ? shortAddress(factoryDeployment.merkleDistributorFactory)
-        : "<span style=\"color:#da3633\">not deployed yet</span>"
-    }</code>
-  `;
+  $("contractStatus").innerHTML = `factory <code>${shortAddress(factoryDeployment.factory)}</code> &nbsp;·&nbsp; distributor-factory <code>${
+    factoryDeployment.merkleDistributorFactory && factoryDeployment.merkleDistributorFactory !== ZERO_ADDRESS
+      ? shortAddress(factoryDeployment.merkleDistributorFactory)
+      : "<span style=\"color:var(--red)\">not deployed</span>"
+  }</code>`;
 
   if (factoryDeployment.factory && factoryDeployment.factory !== ZERO_ADDRESS) {
     try {
       const readProvider = new ethers.JsonRpcProvider(BASE_RPC_URL);
       const factory = new ethers.Contract(factoryDeployment.factory, FACTORY_ABI, readProvider);
       const fee = await factory.launchFee();
-      $("launchFee").textContent = `${ethers.formatEther(fee)} ETH`;
+      const el = $("launchFee");
+      el.textContent = `${ethers.formatEther(fee)} ETH`;
+      el.classList.remove("dim");
     } catch (error) {
       console.error("launchFee load failed", error);
     }
   }
+}
+
+function fillReadout(id, text) {
+  const el = $(id);
+  if (!el) return;
+  el.textContent = text;
+  if (text && text !== "—" && text !== "-") el.classList.remove("dim");
+  else el.classList.add("dim");
 }
 
 async function connectWallet() {
@@ -95,16 +99,17 @@ async function connectWallet() {
     provider = new ethers.BrowserProvider(window.ethereum);
     signer = await provider.getSigner();
     signerAddress = await signer.getAddress();
-    $("account").textContent = signerAddress;
+    fillReadout("account", signerAddress);
     const network = await provider.getNetwork();
-    $("network").textContent = `${network.name} (0x${network.chainId.toString(16)})`;
+    fillReadout("network", `${network.name} (0x${network.chainId.toString(16)})`);
     if (Number(network.chainId) !== 8453) {
-      setStatus("Switch to Base mainnet", "warn");
+      setStatus("Wrong network", "warn");
       return;
     }
     setStatus("Connected", "ok");
   } catch (error) {
-    setStatus(error.message || "Connect failed", "warn");
+    setStatus("Failed", "err");
+    setLaunchStatus(error.message || "Connect failed", "err");
   }
 }
 
@@ -228,12 +233,12 @@ function validateRecipients() {
 
   const { claims, errors } = parseRecipients($("recipientList").value, decimals);
 
-  $("recipientCount").textContent = String(claims.length);
+  fillReadout("recipientCount", String(claims.length));
   if (errors.length) {
     setRecipientStatus(`Found ${errors.length} issue(s):\n${errors.slice(0, 10).join("\n")}`, "warn");
-    $("recipientTotal").textContent = "-";
-    $("creatorKeeps").textContent = "-";
-    $("merkleRootDisplay").textContent = "-";
+    fillReadout("recipientTotal", "—");
+    fillReadout("creatorKeeps", "—");
+    fillReadout("merkleRootDisplay", "—");
     return;
   }
   if (!claims.length) {
@@ -242,27 +247,27 @@ function validateRecipients() {
   }
 
   const total = claims.reduce((sum, c) => sum + c.amountWei, 0n);
-  $("recipientTotal").textContent = `${ethers.formatUnits(total, decimals)} tokens`;
+  fillReadout("recipientTotal", `${ethers.formatUnits(total, decimals)} tokens`);
 
   if (supplyText) {
     try {
       const supplyWei = ethers.parseUnits(supplyText, decimals);
       if (total > supplyWei) {
         setRecipientStatus(`Total airdrop (${ethers.formatUnits(total, decimals)}) exceeds total supply (${supplyText}).`, "warn");
-        $("creatorKeeps").textContent = "Negative";
+        fillReadout("creatorKeeps", "Negative");
       } else {
         const remaining = supplyWei - total;
-        $("creatorKeeps").textContent = `${ethers.formatUnits(remaining, decimals)} tokens`;
+        fillReadout("creatorKeeps", `${ethers.formatUnits(remaining, decimals)} tokens`);
       }
     } catch {
-      $("creatorKeeps").textContent = "?";
+      fillReadout("creatorKeeps", "?");
     }
   } else {
-    $("creatorKeeps").textContent = "?";
+    fillReadout("creatorKeeps", "?");
   }
 
   const { root, layers } = buildMerkleTree(claims);
-  $("merkleRootDisplay").textContent = root;
+  fillReadout("merkleRootDisplay", root);
 
   merkleData = { decimals, claims, total, root, layers };
   setRecipientStatus(`${claims.length} recipients validated. Merkle root computed.`, "ok");
@@ -422,13 +427,14 @@ async function launchFlow() {
     setLaunchStatus("Step 4/4 ✓ Claim data published. Launch complete!", "ok");
 
     const claimUrl = `${window.location.origin}/claim?token=${tokenAddress.toLowerCase()}`;
-    $("resultTokenAddress").textContent = tokenAddress;
-    $("resultDistributorAddress").textContent = distributorAddress;
+    fillReadout("resultTokenAddress", tokenAddress);
+    fillReadout("resultDistributorAddress", distributorAddress);
     $("resultClaimLink").innerHTML = `<a href="${claimUrl}" target="_blank" rel="noopener noreferrer">${claimUrl}</a>`;
-    $("launchResult").style.display = "";
+    $("resultClaimLink").classList.remove("dim");
+    $("launchResult").classList.add("shown");
   } catch (error) {
     console.error("launch error", error);
-    setLaunchStatus(error.shortMessage || error.message || "Launch failed", "warn");
+    setLaunchStatus(error.shortMessage || error.message || "Launch failed", "err");
   } finally {
     launchButton.disabled = false;
   }

@@ -24,21 +24,35 @@ const $ = (id) => document.getElementById(id);
 
 function setStatus(text, cls = "") {
   const el = $("status");
-  el.textContent = text;
-  el.className = "status";
+  el.textContent = (text || "").toUpperCase();
+  el.className = "tag";
   if (cls) el.classList.add(cls);
 }
 
-function setAirdropStatus(text, cls = "") {
-  const el = $("airdropStatus");
+function setStatusLine(id, text, cls = "") {
+  const el = $(id);
   el.textContent = text || "";
-  el.style.color = cls === "warn" ? "#da3633" : cls === "ok" ? "#56d364" : "#8b949e";
+  el.className = "status-line";
+  if (cls) el.classList.add(cls);
+  // re-apply text-align: center if needed
+  if (id === "claimStatusText") el.style.textAlign = "center";
+}
+function setAirdropStatus(text, cls = "") { setStatusLine("airdropStatus", text, cls); }
+function setClaimText(text, cls = "") { setStatusLine("claimStatusText", text, cls); }
+
+function setClaimTag(text, cls = "") {
+  const el = $("yourClaimStatus");
+  el.textContent = (text || "—").toUpperCase();
+  el.className = "tag";
+  if (cls) el.classList.add(cls);
 }
 
-function setClaimText(text, cls = "") {
-  const el = $("claimStatusText");
-  el.textContent = text || "";
-  el.style.color = cls === "warn" ? "#da3633" : cls === "ok" ? "#56d364" : "#8b949e";
+function fillReadout(id, text) {
+  const el = $(id);
+  if (!el) return;
+  el.textContent = text;
+  if (text && text !== "—" && text !== "-") el.classList.remove("dim");
+  else el.classList.add("dim");
 }
 
 function shortAddress(a) {
@@ -55,13 +69,14 @@ async function connectWallet() {
     provider = new ethers.BrowserProvider(window.ethereum);
     signer = await provider.getSigner();
     signerAddress = await signer.getAddress();
-    $("account").textContent = signerAddress;
+    fillReadout("account", signerAddress);
     const network = await provider.getNetwork();
-    $("network").textContent = `${network.name} (0x${network.chainId.toString(16)})`;
+    fillReadout("network", `${network.name} (0x${network.chainId.toString(16)})`);
     setStatus("Connected", "ok");
     if (airdrop) renderUserAllocation();
   } catch (error) {
-    setStatus(error.message || "Connect failed", "warn");
+    setStatus("Failed", "err");
+    setAirdropStatus(error.message || "Connect failed", "err");
   }
 }
 
@@ -119,14 +134,10 @@ async function loadAirdrop(tokenAddress) {
     return;
   }
 
-  $("airdropTokenName").textContent = `${airdrop.tokenName || "?"} (${airdrop.tokenSymbol || "?"})`;
-  $("airdropDistributor").textContent = airdrop.distributorAddress;
-  $("airdropExpiry").textContent = airdrop.expiry > 0
-    ? new Date(airdrop.expiry * 1000).toLocaleString()
-    : "No expiry";
-  $("airdropCreated").textContent = airdrop.createdAt
-    ? new Date(airdrop.createdAt).toLocaleString()
-    : "-";
+  fillReadout("airdropTokenName", `${airdrop.tokenName || "?"} (${airdrop.tokenSymbol || "?"})`);
+  fillReadout("airdropDistributor", airdrop.distributorAddress);
+  fillReadout("airdropExpiry", airdrop.expiry > 0 ? new Date(airdrop.expiry * 1000).toLocaleString() : "No expiry");
+  fillReadout("airdropCreated", airdrop.createdAt ? new Date(airdrop.createdAt).toLocaleString() : "—");
   $("airdropDetailsCard").style.display = "";
   setAirdropStatus("Airdrop loaded. Connect wallet to see your allocation.", "ok");
 
@@ -137,9 +148,12 @@ async function renderUserAllocation() {
   if (!airdrop) return;
   $("yourClaimCard").style.display = "";
 
+  const allocEl = $("yourAllocation");
+
   if (!signerAddress) {
-    $("yourAllocation").textContent = "Connect wallet";
-    $("yourClaimStatus").textContent = "-";
+    allocEl.textContent = "—";
+    allocEl.className = "amount greyed";
+    setClaimTag("Connect wallet");
     $("claimButton").disabled = true;
     setClaimText("Connect your wallet to check eligibility.", "");
     return;
@@ -147,21 +161,24 @@ async function renderUserAllocation() {
 
   const claim = airdrop.claims[signerAddress.toLowerCase()];
   if (!claim) {
-    $("yourAllocation").textContent = "0 (not on the list)";
-    $("yourClaimStatus").textContent = "-";
+    allocEl.textContent = "0";
+    allocEl.className = "amount greyed";
+    setClaimTag("Not on list", "warn");
     $("claimButton").disabled = true;
-    setClaimText("This wallet is not in the airdrop. Check that you connected the right wallet.", "warn");
+    setClaimText("This wallet is not in the airdrop. Try a different account.", "warn");
     return;
   }
 
   const decimals = airdrop.tokenDecimals || 18;
-  $("yourAllocation").textContent = `${ethers.formatUnits(claim.amountWei, decimals)} ${airdrop.tokenSymbol || ""}`;
+  const amount = ethers.formatUnits(claim.amountWei, decimals);
+  allocEl.innerHTML = `${amount} <span class="symbol">${airdrop.tokenSymbol || ""}</span>`;
+  allocEl.className = "amount";
 
   try {
     const distributor = new ethers.Contract(airdrop.distributorAddress, DISTRIBUTOR_ABI, readProvider);
     const claimed = await distributor.isClaimed(claim.index);
     if (claimed) {
-      $("yourClaimStatus").textContent = "Already claimed";
+      setClaimTag("Already claimed", "ok");
       $("claimButton").disabled = true;
       setClaimText("This allocation has already been claimed.", "ok");
       return;
@@ -171,13 +188,13 @@ async function renderUserAllocation() {
   }
 
   if (airdrop.expiry > 0 && Date.now() / 1000 >= airdrop.expiry) {
-    $("yourClaimStatus").textContent = "Expired";
+    setClaimTag("Expired", "err");
     $("claimButton").disabled = true;
-    setClaimText("Claim window has expired. Contact the project creator.", "warn");
+    setClaimText("Claim window has expired. Contact the project creator.", "err");
     return;
   }
 
-  $("yourClaimStatus").textContent = "Claimable";
+  setClaimTag("Claimable", "ok");
   $("claimButton").disabled = false;
   setClaimText("Click Claim to receive your tokens.", "ok");
 }
@@ -201,13 +218,13 @@ async function executeClaim() {
     setClaimText(`Submitted ${tx.hash}. Waiting...`, "");
     await tx.wait();
     setClaimText(`Claim confirmed in tx ${tx.hash}.`, "ok");
-    $("yourClaimStatus").textContent = "Already claimed";
+    setClaimTag("Already claimed", "ok");
   } catch (error) {
     console.error("claim error", error);
     if (error?.code === 4001 || error?.code === "ACTION_REJECTED") {
       setClaimText("Claim rejected in MetaMask.", "warn");
     } else {
-      setClaimText(error.shortMessage || error.message || "Claim failed", "warn");
+      setClaimText(error.shortMessage || error.message || "Claim failed", "err");
     }
     $("claimButton").disabled = false;
   }
