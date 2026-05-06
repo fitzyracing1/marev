@@ -293,6 +293,7 @@ async function connectWallet() {
     accountEl.textContent = activeAccount;
     await refreshData();
     await refreshUniBalances();
+    if (uniSellAmount.value) scheduleUniQuote();
     setStatus("Connected", "ok");
   } catch (error) {
     console.error("Connection error:", error);
@@ -1292,10 +1293,15 @@ async function refreshUniQuote() {
     sellAmount: sellAmountWei.toString(),
     slippageBps: String(slippageBps),
   });
-  if (signerAddress) params.set("taker", signerAddress);
+  if (signerAddress) {
+    params.set("taker", signerAddress);
+    params.set("kind", "quote");
+  } else {
+    params.set("kind", "price");
+  }
 
   const seq = ++uniQuoteSeq;
-  setUniStatus("Fetching best route from 0x...", "");
+  setUniStatus(signerAddress ? "Fetching best route from 0x..." : "Showing indicative price (connect wallet for firm quote)...", "");
 
   let response;
   try {
@@ -1323,8 +1329,13 @@ async function refreshUniQuote() {
   uniGasEl.textContent = payload?.transaction?.gas ? Number(payload.transaction.gas).toLocaleString("en-US") : "-";
 
   await refreshUniAllowance();
-  setUniStatus("Quote ready. Approve the sell token if needed, then Swap.", "ok");
-  uniSwapBtn.disabled = false;
+  if (payload?.transaction?.to) {
+    setUniStatus("Quote ready. Approve the sell token if needed, then Swap.", "ok");
+    uniSwapBtn.disabled = false;
+  } else {
+    setUniStatus("Indicative price loaded. Connect wallet to enable Swap.", "");
+    uniSwapBtn.disabled = true;
+  }
 }
 
 async function refreshUniAllowance() {

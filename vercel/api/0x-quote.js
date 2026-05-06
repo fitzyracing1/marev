@@ -1,4 +1,5 @@
-const ZEROEX_BASE_URL = "https://api.0x.org/swap/allowance-holder/quote";
+const ZEROEX_PRICE_URL = "https://api.0x.org/swap/allowance-holder/price";
+const ZEROEX_QUOTE_URL = "https://api.0x.org/swap/allowance-holder/quote";
 
 module.exports = async (req, res) => {
   const apiKey = process.env.ZEROEX_API_KEY;
@@ -7,11 +8,14 @@ module.exports = async (req, res) => {
     return;
   }
 
-  const { chainId, sellToken, buyToken, sellAmount, taker, slippageBps } = req.query;
+  const { chainId, sellToken, buyToken, sellAmount, taker, slippageBps, kind } = req.query;
   if (!chainId || !sellToken || !buyToken || !sellAmount) {
     res.status(400).json({ error: "chainId, sellToken, buyToken, and sellAmount are required" });
     return;
   }
+
+  const useQuote = String(kind || "").toLowerCase() === "quote" && taker;
+  const upstreamUrl = useQuote ? ZEROEX_QUOTE_URL : ZEROEX_PRICE_URL;
 
   const params = new URLSearchParams({
     chainId: String(chainId),
@@ -23,7 +27,7 @@ module.exports = async (req, res) => {
   if (slippageBps) params.set("slippageBps", String(slippageBps));
 
   try {
-    const upstream = await fetch(`${ZEROEX_BASE_URL}?${params.toString()}`, {
+    const upstream = await fetch(`${upstreamUrl}?${params.toString()}`, {
       headers: {
         "0x-api-key": apiKey,
         "0x-version": "v2",
