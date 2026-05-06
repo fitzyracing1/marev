@@ -286,6 +286,7 @@ async function refreshData() {
 
     if (chainIdHex !== BASE_CHAIN_ID) {
       setStatus("Wrong network", "warn");
+      await updatePoolInfo();
       return;
     }
 
@@ -300,6 +301,10 @@ async function refreshData() {
       await updatePoolInfo();
     }
   } catch (error) {
+    if (error.message === "MetaMask not found") {
+      await updatePoolInfo();
+      return;
+    }
     console.error("Refresh error:", error);
     setStatus(error.message || "Refresh failed", "warn");
   }
