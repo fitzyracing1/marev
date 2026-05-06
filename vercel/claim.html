@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Claim Airdrop | MAREV</title>
+    <meta name="description" content="Claim your Base token airdrop allocation. Enter the token address or open the claim link the project shared." />
+    <link rel="canonical" href="https://marev-bay.vercel.app/claim" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <h1>Claim Airdrop</h1>
+        <p>Enter the token address (or open the claim link the project shared) and claim your allocation.</p>
+        <div class="header-buttons">
+          <a href="/" class="btn-secondary">Home</a>
+          <a href="/launch" class="btn-secondary">Launch + Airdrop</a>
+        </div>
+      </header>
+
+      <section class="card">
+        <div class="row">
+          <button id="connectButton">Connect MetaMask</button>
+          <span id="status" class="status">Not connected</span>
+        </div>
+        <div class="info-grid">
+          <div>
+            <label>Wallet</label>
+            <div id="account" class="mono">-</div>
+          </div>
+          <div>
+            <label>Network</label>
+            <div id="network" class="mono">-</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Airdrop Lookup</h2>
+        <div class="token-import">
+          <input id="tokenAddressInput" type="text" placeholder="Token address (0x...)" />
+          <button id="loadAirdropButton">Load Airdrop</button>
+        </div>
+        <p id="airdropStatus" class="hint">Paste a token address or use a claim link.</p>
+      </section>
+
+      <section class="card" id="airdropDetailsCard" style="display: none;">
+        <h2>Airdrop Details</h2>
+        <div class="info-grid">
+          <div>
+            <label>Token</label>
+            <div id="airdropTokenName" class="mono">-</div>
+          </div>
+          <div>
+            <label>Distributor</label>
+            <div id="airdropDistributor" class="mono">-</div>
+          </div>
+          <div>
+            <label>Expiry</label>
+            <div id="airdropExpiry" class="mono">-</div>
+          </div>
+          <div>
+            <label>Created</label>
+            <div id="airdropCreated" class="mono">-</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card" id="yourClaimCard" style="display: none;">
+        <h2>Your Allocation</h2>
+        <div class="info-grid">
+          <div>
+            <label>Allocation</label>
+            <div id="yourAllocation" class="mono">-</div>
+          </div>
+          <div>
+            <label>Status</label>
+            <div id="yourClaimStatus" class="mono">-</div>
+          </div>
+        </div>
+        <div class="token-card-actions">
+          <button id="claimButton" class="btn-primary">Claim</button>
+        </div>
+        <p id="claimStatusText" class="hint"></p>
+      </section>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.2/dist/ethers.umd.min.js"></script>
+    <script src="claim.js"></script>
+  </body>
+</html>

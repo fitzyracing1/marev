@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MAREV Launch + Airdrop | Launch a Base Token with a Built-in Airdrop</title>
+    <meta
+      name="description"
+      content="Launch a Base ERC-20 token and configure a Merkle airdrop in one flow. Share a claim link, recipients claim with a single transaction."
+    />
+    <link rel="canonical" href="https://marev-bay.vercel.app/launch" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <h1>Launch + Airdrop</h1>
+        <p>Create a Base ERC-20 and set up a Merkle airdrop in one flow. Share one link and your recipients claim themselves.</p>
+        <div class="header-buttons">
+          <a href="/" class="btn-secondary">Home</a>
+          <a href="/dex" class="btn-secondary">DEX</a>
+          <a href="/factory" class="btn-secondary">Token-Only Factory</a>
+        </div>
+      </header>
+
+      <section class="card">
+        <div class="row">
+          <button id="connectButton">Connect MetaMask</button>
+          <button id="switchBaseButton" class="btn-secondary">Switch to Base</button>
+          <span id="status" class="status">Not connected</span>
+        </div>
+        <div class="info-grid">
+          <div>
+            <label>Wallet</label>
+            <div id="account" class="mono">-</div>
+          </div>
+          <div>
+            <label>Network</label>
+            <div id="network" class="mono">-</div>
+          </div>
+          <div>
+            <label>Launch Fee</label>
+            <div id="launchFee" class="mono">-</div>
+          </div>
+        </div>
+        <p id="contractStatus" class="hint">Loading deployment configuration...</p>
+      </section>
+
+      <section class="card">
+        <h2>Token Details</h2>
+        <div class="info-grid">
+          <div>
+            <label for="tokenName">Token Name</label>
+            <input id="tokenName" class="editor-input" type="text" placeholder="e.g. Pepe Coin" />
+          </div>
+          <div>
+            <label for="tokenSymbol">Symbol</label>
+            <input id="tokenSymbol" class="editor-input" type="text" placeholder="e.g. PEPE" />
+          </div>
+          <div>
+            <label for="tokenDecimals">Decimals</label>
+            <input id="tokenDecimals" class="editor-input" type="number" value="18" min="1" max="18" />
+          </div>
+          <div>
+            <label for="tokenSupply">Total Supply</label>
+            <input id="tokenSupply" class="editor-input" type="number" placeholder="1000000" min="0" />
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Airdrop Recipients</h2>
+        <p class="hint">One recipient per line as <code>address,amount</code>. Amounts are in human units of your token (e.g. <code>1000</code> = 1000 tokens at the configured decimals). Lines starting with <code>#</code> are ignored.</p>
+        <textarea id="recipientList" class="editor-textarea" style="min-height: 220px;" spellcheck="false" placeholder="0xAbC...,500
+0xDef...,1000
+0x123...,250"></textarea>
+        <div class="token-card-actions">
+          <button id="validateRecipientsButton" class="btn-secondary">Validate Recipients</button>
+          <button id="loadSampleButton" class="btn-secondary">Load Sample List</button>
+        </div>
+        <div class="info-grid" style="margin-top: 16px;">
+          <div>
+            <label>Recipients</label>
+            <div id="recipientCount" class="mono">-</div>
+          </div>
+          <div>
+            <label>Total Airdrop</label>
+            <div id="recipientTotal" class="mono">-</div>
+          </div>
+          <div>
+            <label>Creator Keeps</label>
+            <div id="creatorKeeps" class="mono">-</div>
+          </div>
+          <div>
+            <label>Merkle Root</label>
+            <div id="merkleRootDisplay" class="mono">-</div>
+          </div>
+        </div>
+        <p id="recipientStatus" class="hint"></p>
+      </section>
+
+      <section class="card">
+        <h2>Optional: Claim Window</h2>
+        <p class="hint">If set, recipients can only claim before this date. After expiry the creator can call <code>sweep()</code> on the distributor to recover unclaimed tokens. Leave empty for no expiry.</p>
+        <div class="info-grid">
+          <div>
+            <label for="expiryDays">Days Until Expiry</label>
+            <input id="expiryDays" class="editor-input" type="number" min="0" placeholder="e.g. 30 (leave empty for no expiry)" />
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Launch</h2>
+        <p class="hint">Launch will create the token, deploy a fresh airdrop distributor, fund it, and publish your claim data. You'll confirm 3 transactions in MetaMask. Total cost: launch fee (above) + ~$0.50 in Base gas.</p>
+        <div class="token-card-actions">
+          <button id="launchButton" class="btn-primary">Launch + Setup Airdrop</button>
+        </div>
+        <p id="launchStatus" class="hint"></p>
+        <div id="launchResult" style="display: none;" class="info-grid" style="margin-top: 16px;">
+          <div>
+            <label>Token Address</label>
+            <div id="resultTokenAddress" class="mono">-</div>
+          </div>
+          <div>
+            <label>Distributor Address</label>
+            <div id="resultDistributorAddress" class="mono">-</div>
+          </div>
+          <div>
+            <label>Claim Link</label>
+            <div id="resultClaimLink" class="mono">-</div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.2/dist/ethers.umd.min.js"></script>
+    <script src="launch.js"></script>
+  </body>
+</html>
