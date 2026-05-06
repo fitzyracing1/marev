@@ -1,0 +1,46 @@
+{
+  "tokenAddress": "0x140786886c1222974114bce11f04844ffbaf5ba6",
+  "distributorAddress": "0xbff90d734a5d50a89db6bd78eb961ddebebd0a39",
+  "tokenName": "AirdropTest",
+  "tokenSymbol": "ADTEST",
+  "tokenDecimals": 18,
+  "merkleRoot": "0x441ab20bede394f69c33f42e8bbaa44c0fa9a57d916707e9afc343a9336e2e98",
+  "expiry": 0,
+  "creator": "0x4253aaca78419dd5d82a74708c29c6bdfe325565",
+  "totalAmount": "100000000000000000000",
+  "createdAt": "2026-05-06T22:22:24.544Z",
+  "claims": {
+    "0x4253aaca78419dd5d82a74708c29c6bdfe325565": {
+      "index": 0,
+      "amountWei": "25000000000000000000",
+      "proof": [
+        "0x29d21a46dbf188c362a1aa918f70af503528160bbf56051ce3ffabc706e91b61",
+        "0x2b363fb521d6e2775e8749e0b4497077b7c7c4f94261bc82c681cb6036f2073d"
+      ]
+    },
+    "0x0000000000000000000000000000000000000001": {
+      "index": 1,
+      "amountWei": "25000000000000000000",
+      "proof": [
+        "0x0754732fed63ef1a6d5137607bfeb501719b0f500c8561bd4fb80099010646d9",
+        "0x2b363fb521d6e2775e8749e0b4497077b7c7c4f94261bc82c681cb6036f2073d"
+      ]
+    },
+    "0x0000000000000000000000000000000000000002": {
+      "index": 2,
+      "amountWei": "25000000000000000000",
+      "proof": [
+        "0x1d557adab3afbc8db3282c0c46f85c312103b334c5ada323378ab192cc941672",
+        "0xf31983046f8cf9095f22c06397d8bd2d1ede162b8a4de187b36cba3276381aa1"
+      ]
+    },
+    "0x0000000000000000000000000000000000000003": {
+      "index": 3,
+      "amountWei": "25000000000000000000",
+      "proof": [
+        "0x175766d81266ecc860f2b862d8010e31069640f99bf75186ca9c6af3efa96d28",
+        "0xf31983046f8cf9095f22c06397d8bd2d1ede162b8a4de187b36cba3276381aa1"
+      ]
+    }
+  }
+}
