@@ -1319,6 +1319,19 @@ async function refreshUniQuote() {
     return;
   }
 
+  if (payload.liquidityAvailable === false) {
+    uniLastQuote = null;
+    uniBuyAmount.value = "";
+    uniMinReceiveEl.textContent = "-";
+    uniRouteEl.textContent = "No route";
+    uniGasEl.textContent = "-";
+    uniAllowanceEl.textContent = "-";
+    uniApproveBtn.disabled = true;
+    uniSwapBtn.disabled = true;
+    setUniStatus("No route found. This token pair isn't tradeable on any DEX 0x indexes (Uniswap, Aerodrome, PancakeSwap, BaseSwap, etc.). For MAREV specifically, use the MAREV Pool card below.", "warn");
+    return;
+  }
+
   uniLastQuote = { ...payload, sellAddress, buyAddress, sellDecimals, buyDecimals, sellAmountWei };
 
   const buyAmount = BigInt(payload.buyAmount || "0");
