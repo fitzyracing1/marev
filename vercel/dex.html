@@ -124,6 +124,19 @@
       <section class="card">
         <div class="section-title-row">
           <div>
+            <h2>Live Market Prices</h2>
+            <p class="hint">Live price, volume, and liquidity from DexScreener and GeckoTerminal. Updates each time you refresh.</p>
+          </div>
+          <button id="refreshLivePrices" class="btn-secondary">Refresh Prices</button>
+        </div>
+        <div id="livePricesGrid" class="token-grid">
+          <div class="empty-state">Loading live prices...</div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="section-title-row">
+          <div>
             <h2>Featured Coin: Fire Coin</h2>
             <p class="hint">People buy whole shares here. Each share is priced from the live Fire Coin market, and the app converts the share count into however many Fire coins that share value buys.</p>
           </div>

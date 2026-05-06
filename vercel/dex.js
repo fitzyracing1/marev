@@ -2,6 +2,8 @@ const BASE_CHAIN_ID = "0x2105";
 const BASE_RPC_URL = "https://mainnet.base.org";
 const DEXSCREENER_PROFILES_URL = "https://api.dexscreener.com/token-profiles/latest/v1";
 const DEXSCREENER_SEARCH_URL = "https://api.dexscreener.com/latest/dex/search/?q=";
+const DEXSCREENER_TOKEN_URL = "https://api.dexscreener.com/latest/dex/tokens/";
+const GECKOTERMINAL_TOKEN_URL = "https://api.geckoterminal.com/api/v2/networks/base/tokens/";
 const USDC_DECIMALS = 6;
 const MAREV_DECIMALS = 18;
 const IMPORT_STORAGE_KEY = "marev-base-token-imports";
@@ -1047,6 +1049,138 @@ async function searchBaseMarket(query) {
     baseMarketFeedEl.innerHTML = `<div class="empty-state">Search failed. Try another Base token, symbol, or address.</div>`;
     baseMarketStatusEl.textContent = "Base market search is unavailable right now.";
   }
+}
+
+async function fetchBestBasePair(tokenAddress) {
+  try {
+    const response = await fetch(`${DEXSCREENER_TOKEN_URL}${tokenAddress}`);
+    if (!response.ok) return null;
+    const data = await response.json();
+    const basePairs = (data.pairs || [])
+      .filter((p) => String(p.chainId || "").toLowerCase() === "base")
+      .sort((a, b) => Number(b.liquidity?.usd || 0) - Number(a.liquidity?.usd || 0));
+    return basePairs[0] || null;
+  } catch {
+    return null;
+  }
+}
+
+async function fetchGeckoTerminalToken(tokenAddress) {
+  try {
+    const response = await fetch(`${GECKOTERMINAL_TOKEN_URL}${tokenAddress}`, {
+      headers: { Accept: "application/json" },
+    });
+    if (!response.ok) return null;
+    const data = await response.json();
+    return data?.data?.attributes || null;
+  } catch {
+    return null;
+  }
+}
+
+function renderLivePriceCard({ name, symbol, address, priceUsd, volume24h, liquidity, change24h, source, dexName, pairUrl }) {
+  const priceText = priceUsd != null
+    ? `$${Number(priceUsd).toLocaleString("en-US", { maximumSignificantDigits: 6 })}`
+    : "No price data";
+  const volText = volume24h != null ? formatUsdLike(Number(volume24h)) : "-";
+  const liqText = liquidity != null ? formatUsdLike(Number(liquidity)) : "-";
+  const changeNum = Number(change24h);
+  const changeText = change24h != null ? `${changeNum >= 0 ? "+" : ""}${changeNum.toFixed(2)}%` : "-";
+  const changeColor = changeNum >= 0 ? "#238636" : "#da3633";
+
+  const card = document.createElement("div");
+  card.className = "token-card";
+  card.innerHTML = `
+    <h3>${escapeHtml(name)} (${escapeHtml(symbol)})</h3>
+    <p>Via ${escapeHtml(source)}${dexName ? ` · ${escapeHtml(dexName)}` : ""}.</p>
+    <span class="token-badge live">Live Price</span>
+    <p>Price: <strong>${priceText}</strong></p>
+    <p>24h Change: <span style="color:${changeColor}">${changeText}</span></p>
+    <p>24h Volume: ${volText}</p>
+    <p>Liquidity: ${liqText}</p>
+    <div class="token-card-actions">
+      <button class="btn-secondary" data-copy>Copy Address</button>
+      <a class="btn-secondary" href="https://basescan.org/address/${address}" target="_blank" rel="noopener noreferrer">BaseScan</a>
+      ${pairUrl ? `<a class="btn-secondary" href="${pairUrl}" target="_blank" rel="noopener noreferrer">View Pair</a>` : ""}
+      <a class="btn-secondary" href="https://dexscreener.com/base/${address}" target="_blank" rel="noopener noreferrer">DexScreener</a>
+    </div>
+  `;
+  card.querySelector("[data-copy]").addEventListener("click", () => copyAddress(address));
+  return card;
+}
+
+function renderNotTrackedCard(name, symbol, address) {
+  const card = document.createElement("div");
+  card.className = "token-card";
+  card.innerHTML = `
+    <h3>${escapeHtml(name)} (${escapeHtml(symbol)})</h3>
+    <p>No tracked DEX pairs found on Base yet.</p>
+    <span class="token-badge pending">Not Yet Tracked</span>
+    <p>Price: —</p>
+    <p>To get a live price: add liquidity on PancakeSwap, Aerodrome, or Uniswap V3 on Base. DexScreener and GeckoTerminal will index it automatically.</p>
+    <div class="token-card-actions">
+      <button class="btn-secondary" data-copy>Copy Address</button>
+      <a class="btn-secondary" href="https://basescan.org/address/${address}" target="_blank" rel="noopener noreferrer">BaseScan</a>
+      <a class="btn-secondary" href="https://dexscreener.com/base/${address}" target="_blank" rel="noopener noreferrer">DexScreener</a>
+      <a class="btn-secondary" href="https://www.geckoterminal.com/base/tokens/${address}" target="_blank" rel="noopener noreferrer">GeckoTerminal</a>
+    </div>
+  `;
+  card.querySelector("[data-copy]").addEventListener("click", () => copyAddress(address));
+  return card;
+}
+
+async function loadLivePriceCard(address, nameFallback, symbolFallback) {
+  const pair = await fetchBestBasePair(address);
+  if (pair) {
+    return renderLivePriceCard({
+      name: pair.baseToken?.name || nameFallback,
+      symbol: pair.baseToken?.symbol || symbolFallback,
+      address,
+      priceUsd: pair.priceUsd,
+      volume24h: pair.volume?.h24,
+      liquidity: pair.liquidity?.usd,
+      change24h: pair.priceChange?.h24,
+      source: "DexScreener",
+      dexName: pair.dexId,
+      pairUrl: pair.url,
+    });
+  }
+
+  const gecko = await fetchGeckoTerminalToken(address);
+  if (gecko && gecko.price_usd) {
+    return renderLivePriceCard({
+      name: gecko.name || nameFallback,
+      symbol: gecko.symbol || symbolFallback,
+      address,
+      priceUsd: gecko.price_usd,
+      volume24h: gecko.volume_usd?.h24,
+      liquidity: null,
+      change24h: gecko.price_change_percentage?.h24,
+      source: "GeckoTerminal",
+      dexName: null,
+      pairUrl: null,
+    });
+  }
+
+  return renderNotTrackedCard(nameFallback, symbolFallback, address);
+}
+
+async function loadLiveMarketData() {
+  const container = document.getElementById("livePricesGrid");
+  if (!container) return;
+
+  const marevAddress = contractAddresses.marev !== ZERO_ADDRESS
+    ? contractAddresses.marev
+    : "0x77F7188853DD13D7CE3E9bfDeb070a9544eCf446";
+
+  const [marevCard, fireCard] = await Promise.all([
+    loadLivePriceCard(marevAddress, "MAREV", "MAREV"),
+    loadLivePriceCard(FIRE_COIN_ADDRESS, "Fire Coin", "FCOIN"),
+  ]);
+
+  container.innerHTML = "";
+  container.appendChild(marevCard);
+  container.appendChild(fireCard);
 }
 
 function initApp() {
