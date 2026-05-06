@@ -1186,7 +1186,7 @@ async function loadLiveMarketData() {
 function initApp() {
   loadDeploymentAddresses()
     .then(async () => {
-      await Promise.all([loadFactoryTokens(), renderImportedBaseTokens(), loadBaseMarketFeed(), loadFeaturedFireCoin(), refreshData()]);
+      await Promise.all([loadFactoryTokens(), renderImportedBaseTokens(), loadBaseMarketFeed(), loadFeaturedFireCoin(), loadLiveMarketData(), refreshData()]);
     })
     .catch((error) => console.error(error));
 
@@ -1205,10 +1205,11 @@ function initApp() {
   approveButton.addEventListener("click", approveCurrentToken);
   swapButton.addEventListener("click", executeSwap);
   refreshButton.addEventListener("click", async () => {
-    await Promise.all([refreshData(), loadFactoryTokens(), renderImportedBaseTokens(), loadBaseMarketFeed(), loadFeaturedFireCoin()]);
+    await Promise.all([refreshData(), loadFactoryTokens(), renderImportedBaseTokens(), loadBaseMarketFeed(), loadFeaturedFireCoin(), loadLiveMarketData()]);
   });
   refreshFactoryTokensButton.addEventListener("click", loadFactoryTokens);
   refreshMarketFeedButton.addEventListener("click", loadBaseMarketFeed);
+  document.getElementById("refreshLivePrices")?.addEventListener("click", loadLiveMarketData);
   switchButton.addEventListener("click", switchToMainnet);
   downloadButton.addEventListener("click", downloadDeploymentInfo);
   importBaseTokenButton.addEventListener("click", () => importBaseToken(baseTokenAddressInput.value));
