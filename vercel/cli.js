@@ -1,4 +1,5 @@
 const BASE_CHAIN_ID = "0x2105";
+const BASE_RPC_URL = "https://mainnet.base.org";
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
 const FACTORY_ABI = [
@@ -146,7 +147,7 @@ async function refreshNetwork() {
 }
 
 async function showCoins() {
-  const readProvider = provider || new ethers.BrowserProvider(window.ethereum);
+  const readProvider = provider || new ethers.JsonRpcProvider(BASE_RPC_URL);
   const factory = new ethers.Contract(factoryDeployment.factory, FACTORY_ABI, readProvider);
   const total = Number(await factory.getTotalTokens());
   appendOutput(`Factory coins: ${total}`);
@@ -264,7 +265,7 @@ async function previewAttn() {
     return;
   }
 
-  const readProvider = provider || new ethers.BrowserProvider(window.ethereum);
+  const readProvider = provider || new ethers.JsonRpcProvider(BASE_RPC_URL);
   const rewards = new ethers.Contract(factoryDeployment.attentionRewardsHook, REWARDS_ABI, readProvider);
   const day = await rewards.currentDay();
   const [score, amount, alreadyClaimed] = await rewards.previewRewards(day, activeAccount);
@@ -313,7 +314,7 @@ async function attnDailyStatus() {
     return;
   }
 
-  const readProvider = provider || new ethers.BrowserProvider(window.ethereum);
+  const readProvider = provider || new ethers.JsonRpcProvider(BASE_RPC_URL);
   const rewards = new ethers.Contract(factoryDeployment.attentionRewardsHook, REWARDS_ABI, readProvider);
   const day = await rewards.currentDay();
   const [score, amount, alreadyClaimed] = await rewards.previewRewards(day, activeAccount);

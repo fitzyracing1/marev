@@ -1,4 +1,5 @@
 const BASE_CHAIN_ID_HEX = "0x2105";
+const BASE_RPC_URL = "https://mainnet.base.org";
 const CLAIMS_DATA_URL = "./attention-claims.json";
 
 const DISTRIBUTOR_ABI = [
@@ -74,6 +75,12 @@ async function switchToBase() {
   }
 }
 
+function getReadProvider() {
+  if (provider) return provider;
+  if (window.ethereum) return new ethers.BrowserProvider(window.ethereum);
+  return new ethers.JsonRpcProvider(BASE_RPC_URL);
+}
+
 async function refreshNetwork() {
   if (!provider) return;
   const network = await provider.getNetwork();
@@ -145,7 +152,8 @@ async function autoSelectClaim() {
     const selectedClaim = claims[0];
     fillClaimForm(selectedClaim);
 
-    const network = await provider.getNetwork();
+    const readProvider = getReadProvider();
+    const network = await readProvider.getNetwork();
     const chainId = normalizeChainId(network.chainId);
     if (chainId !== 8453) {
       setClaimButtonState({ disabled: true, text: "Switch to Base" });
@@ -160,7 +168,7 @@ async function autoSelectClaim() {
       return;
     }
 
-    const distributor = new ethers.Contract(distributorAddress, DISTRIBUTOR_ABI, provider);
+    const distributor = new ethers.Contract(distributorAddress, DISTRIBUTOR_ABI, readProvider);
     const alreadyClaimed = await distributor.claimed(BigInt(selectedClaim.day), activeAccount);
 
     if (alreadyClaimed) {
