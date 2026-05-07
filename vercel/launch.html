@@ -263,13 +263,19 @@ footer { margin-top: 60px; padding-top: 24px; border-top: 1px solid var(--border
   <div class="card">
     <h2><span class="card-num">3</span>// AIRDROP RECIPIENTS</h2>
     <p class="card-help">Who gets free tokens. Format: <code>address,amount</code> — one per line. Amount is in human units, not wei. <code>500</code> means 500 tokens (the contract handles decimals). Lines starting with <code>#</code> are comments. Click <strong>Validate Recipients</strong> to compute the Merkle root before launching.</p>
-    <textarea id="recipientList" rows="9" spellcheck="false" placeholder="0xAbC...,500
-0xDef...,1000
-0x123...,250"></textarea>
+    <textarea id="recipientList" rows="9" spellcheck="false" placeholder="# One recipient per line as: wallet_address,amount
+# Example:
+0x4253AaCA78419dd5d82A74708c29c6Bdfe325565,100
+0xDD0C7e78229672Af3103d4771238ab3A384c5083,50
+
+# Replace these with your real list, or click 'Load Sample List' below."></textarea>
     <div class="actions-row">
+      <button id="loadSampleButton" class="btn-ghost">Load Sample List (Easy Mode)</button>
       <button id="validateRecipientsButton">Validate Recipients</button>
-      <button id="loadSampleButton" class="btn-ghost">Load Sample List</button>
     </div>
+    <p class="card-help" style="margin: 12px 0 0; font-size: 12px;">
+      Tip: click <strong>Load Sample List</strong> first to see a working example with your wallet on it. Edit it to your real recipients, then click <strong>Validate Recipients</strong> to compute the Merkle root.
+    </p>
     <div class="grid" style="margin-top: 18px;">
       <div>
         <label>Recipients</label>
