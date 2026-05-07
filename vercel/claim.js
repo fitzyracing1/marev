@@ -125,7 +125,15 @@ async function loadAirdrop(tokenAddress) {
   try {
     const response = await fetch(`/airdrops/${normalized}.json`, { cache: "no-store" });
     if (!response.ok) {
-      setAirdropStatus(`No airdrop found for that token (${response.status}).`, "warn");
+      // Distinguish: did they paste a wallet (EOA, no contract code)?
+      try {
+        const code = await readProvider.getCode(normalized);
+        if (code === "0x") {
+          setAirdropStatus("That looks like a wallet address (no contract at this address on Base). Paste the token contract address instead — that's the thing the project launched.", "warn");
+          return;
+        }
+      } catch {}
+      setAirdropStatus(`No airdrop registered for this token. Make sure you're using the token contract address from a claim link the project shared.`, "warn");
       return;
     }
     airdrop = await response.json();
