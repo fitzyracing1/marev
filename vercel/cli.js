@@ -485,7 +485,15 @@ async function addTokenToWallet(flags) {
     });
     appendOutput(wasAdded ? `${symbol} added to wallet. Check your assets list.` : `Wallet declined adding ${symbol}.`);
   } catch (e) {
-    appendOutput(`Failed: ${e.message || e}`);
+    const msg = e.message || String(e);
+    if (msg.includes("not support") || msg.includes("not implemented")) {
+      appendOutput(`Your wallet (probably Uniswap Wallet) doesn't support auto-add. Workarounds:`);
+      appendOutput(`  - Open https://app.uniswap.org and connect to see all token balances`);
+      appendOutput(`  - In wallet, find "Hidden Tokens" or "Show all tokens" — ${symbol} is usually auto-hidden`);
+      appendOutput(`  - Verify on BaseScan: https://basescan.org/token/${addr}?a=${activeAccount || signerAddress || "0x..."}`);
+    } else {
+      appendOutput(`Failed: ${msg}`);
+    }
   }
 }
 
