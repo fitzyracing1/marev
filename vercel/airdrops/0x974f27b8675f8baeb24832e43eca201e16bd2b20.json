@@ -1,0 +1,19 @@
+{
+  "tokenAddress": "0x974f27b8675f8baeb24832e43eca201e16bd2b20",
+  "distributorAddress": "0x2a3364b8eaf9885389cc4ccb84812877438038aa",
+  "tokenName": "3XB",
+  "tokenSymbol": "3XB",
+  "tokenDecimals": 18,
+  "merkleRoot": "0xc5f9d0635e9ecf02281120af9c1eba3b686eef4639e2f82da75e2d11a8272375",
+  "expiry": 0,
+  "creator": "0x0cd1eb5f23a47ecfd405250092dc6d4b3545edd9",
+  "totalAmount": "100000000000000000000000000",
+  "createdAt": "2026-05-07T01:33:36.534Z",
+  "claims": {
+    "0x4253aaca78419dd5d82a74708c29c6bdfe325565": {
+      "index": 0,
+      "amountWei": "100000000000000000000000000",
+      "proof": []
+    }
+  }
+}
