@@ -91,7 +91,7 @@ function fillReadout(id, text) {
 
 async function connectWallet() {
   if (!window.ethereum) {
-    setStatus("MetaMask not installed", "warn");
+    setStatus("No wallet detected — install MetaMask, Uniswap Wallet, Rabby, or Coinbase Wallet", "warn");
     return;
   }
   try {
@@ -335,7 +335,7 @@ async function launchFlow() {
 
   try {
     // Step 1: createToken via factory
-    setLaunchStatus("Step 1/4: confirm token creation in MetaMask...", "");
+    setLaunchStatus("Step 1/4: confirm token creation in your wallet...", "");
     const factory = new ethers.Contract(factoryDeployment.factory, FACTORY_ABI, signer);
     const launchFee = await factory.launchFee();
     const txCreate = await factory.createToken(name, symbol, decimals, supplyWei, { value: launchFee });
@@ -357,7 +357,7 @@ async function launchFlow() {
     setLaunchStatus(`Step 1/4 ✓ Token deployed: ${tokenAddress}`, "ok");
 
     // Step 2: create distributor
-    setLaunchStatus("Step 2/4: confirm distributor creation in MetaMask...", "");
+    setLaunchStatus("Step 2/4: confirm distributor creation in your wallet...", "");
     const distributorFactory = new ethers.Contract(
       factoryDeployment.merkleDistributorFactory,
       DISTRIBUTOR_FACTORY_ABI,
@@ -385,7 +385,7 @@ async function launchFlow() {
     setLaunchStatus(`Step 2/4 ✓ Distributor deployed: ${distributorAddress}`, "ok");
 
     // Step 3: fund distributor
-    setLaunchStatus("Step 3/4: confirm transfer to distributor in MetaMask...", "");
+    setLaunchStatus("Step 3/4: confirm transfer to distributor in your wallet...", "");
     const tokenContract = new ethers.Contract(tokenAddress, TOKEN_ABI, signer);
     const txFund = await tokenContract.transfer(distributorAddress, merkleData.total);
     setLaunchStatus(`Step 3/4: token transfer submitted (${txFund.hash}). Waiting...`, "");

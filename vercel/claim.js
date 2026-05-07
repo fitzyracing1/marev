@@ -61,7 +61,7 @@ function shortAddress(a) {
 
 async function connectWallet() {
   if (!window.ethereum) {
-    setStatus("MetaMask not installed", "warn");
+    setStatus("No wallet detected — install MetaMask, Uniswap Wallet, Rabby, or Coinbase Wallet", "warn");
     return;
   }
   try {
@@ -212,7 +212,7 @@ async function executeClaim() {
 
   $("claimButton").disabled = true;
   try {
-    setClaimText("Confirm claim in MetaMask...", "");
+    setClaimText("Confirm claim in your wallet...", "");
     const distributor = new ethers.Contract(airdrop.distributorAddress, DISTRIBUTOR_ABI, signer);
     const tx = await distributor.claim(claim.index, signerAddress, claim.amountWei, claim.proof);
     setClaimText(`Submitted ${tx.hash}. Waiting...`, "");
@@ -222,7 +222,7 @@ async function executeClaim() {
   } catch (error) {
     console.error("claim error", error);
     if (error?.code === 4001 || error?.code === "ACTION_REJECTED") {
-      setClaimText("Claim rejected in MetaMask.", "warn");
+      setClaimText("Claim rejected in your wallet.", "warn");
     } else {
       setClaimText(error.shortMessage || error.message || "Claim failed", "err");
     }
