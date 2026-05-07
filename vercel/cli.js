@@ -17,6 +17,20 @@ const TOKEN_ABI = [
   "function decimals() view returns (uint8)",
   "function allowance(address owner, address spender) view returns (uint256)",
   "function approve(address spender, uint256 amount) returns (bool)",
+  "function balanceOf(address) view returns (uint256)",
+];
+
+const DISTRIBUTOR_FACTORY_ABI = [
+  "function totalDistributors() view returns (uint256)",
+  "function allDistributors(uint256) view returns (address)",
+  "function getCreatorDistributors(address) view returns (address[])",
+  "function getTokenDistributors(address) view returns (address[])",
+];
+
+const DISTRIBUTOR_ABI = [
+  "function token() view returns (address)",
+  "function isClaimed(uint256) view returns (bool)",
+  "function claim(uint256 index, address account, uint256 amount, bytes32[] proof) external",
 ];
 
 const LISTING_MANAGER_ABI = [
@@ -334,25 +348,175 @@ async function attnDailyStatus() {
   }
 }
 
+async function showBalances(flags) {
+  const wallet = (flags._[0] || flags.wallet || activeAccount);
+  if (!wallet) {
+    appendOutput("Usage: balances [<wallet-address>] (or 'connect' first)");
+    return;
+  }
+  const readProvider = provider || new ethers.JsonRpcProvider(BASE_RPC_URL);
+  appendOutput(`Balances for ${wallet}:`);
+  const eth = await readProvider.getBalance(wallet);
+  appendOutput(`  ETH:                 ${ethers.formatEther(eth)}`);
+
+  const factory = new ethers.Contract(factoryDeployment.factory, FACTORY_ABI, readProvider);
+  const total = Number(await factory.getTotalTokens());
+  if (total === 0) {
+    appendOutput("  (no factory tokens to scan)");
+    return;
+  }
+  appendOutput(`  scanning ${total} factory tokens...`);
+  let nonzero = 0;
+  for (let i = total - 1; i >= 0; i -= 1) {
+    const tokenAddress = await factory.allTokens(i);
+    const t = new ethers.Contract(tokenAddress, TOKEN_ABI, readProvider);
+    try {
+      const [sym, dec, bal] = await Promise.all([
+        t.symbol().catch(() => "?"),
+        t.decimals().catch(() => 18),
+        t.balanceOf(wallet).catch(() => 0n),
+      ]);
+      if (bal > 0n) {
+        appendOutput(`  ${sym.padEnd(8)} ${ethers.formatUnits(bal, Number(dec))}    (${tokenAddress})`);
+        nonzero++;
+      }
+    } catch {}
+  }
+  if (nonzero === 0) appendOutput("  no factory token balances found");
+}
+
+async function findClaims(flags) {
+  const wallet = (flags.wallet || flags._[0] || activeAccount);
+  if (!wallet) {
+    appendOutput("Usage: find-claims [<wallet-address>]");
+    return;
+  }
+  if (!factoryDeployment.merkleDistributorFactory || factoryDeployment.merkleDistributorFactory === ZERO_ADDRESS) {
+    appendOutput("MerkleDistributorFactory address is missing from deployment config.");
+    return;
+  }
+  const readProvider = provider || new ethers.JsonRpcProvider(BASE_RPC_URL);
+  const distFactory = new ethers.Contract(factoryDeployment.merkleDistributorFactory, DISTRIBUTOR_FACTORY_ABI, readProvider);
+  const total = Number(await distFactory.totalDistributors());
+  appendOutput(`Scanning ${total} airdrop distributors for claims to ${wallet}...`);
+  const lower = wallet.toLowerCase();
+  let found = 0;
+  for (let i = 0; i < total; i++) {
+    try {
+      const distAddr = await distFactory.allDistributors(i);
+      const dist = new ethers.Contract(distAddr, DISTRIBUTOR_ABI, readProvider);
+      const tokenAddr = (await dist.token()).toLowerCase();
+      const resp = await fetch(`/airdrops/${tokenAddr}.json`, { cache: "no-store" });
+      if (!resp.ok) continue;
+      const data = await resp.json();
+      const claim = data.claims?.[lower];
+      if (!claim) continue;
+      const claimed = await dist.isClaimed(claim.index);
+      const decimals = data.tokenDecimals || 18;
+      const sym = data.tokenSymbol || "?";
+      const amount = ethers.formatUnits(claim.amountWei, decimals);
+      appendOutput(`  ${claimed ? "[CLAIMED]   " : "[CLAIMABLE] "} ${amount} ${sym}  token=${tokenAddr}`);
+      found++;
+    } catch {}
+  }
+  appendOutput(found === 0 ? "No claims found for that wallet." : `Found ${found} claim(s).`);
+}
+
+async function claimFromAirdrop(flags) {
+  if (!signer || !signerAddress) {
+    appendOutput("Connect wallet first.");
+    return;
+  }
+  const tokenAddr = flags.token || flags._[0];
+  if (!tokenAddr) {
+    appendOutput("Usage: claim --token 0x...");
+    return;
+  }
+  const lower = tokenAddr.toLowerCase();
+  const resp = await fetch(`/airdrops/${lower}.json`, { cache: "no-store" });
+  if (!resp.ok) {
+    appendOutput(`No airdrop found for token ${tokenAddr}`);
+    return;
+  }
+  const data = await resp.json();
+  const myClaim = data.claims?.[signerAddress.toLowerCase()];
+  if (!myClaim) {
+    appendOutput(`Wallet ${signerAddress} is not in this airdrop.`);
+    return;
+  }
+  const dist = new ethers.Contract(data.distributorAddress, DISTRIBUTOR_ABI, signer);
+  const claimed = await dist.isClaimed(myClaim.index);
+  if (claimed) {
+    appendOutput(`Already claimed for this wallet.`);
+    return;
+  }
+  appendOutput(`Claiming ${ethers.formatUnits(myClaim.amountWei, data.tokenDecimals || 18)} ${data.tokenSymbol || "tokens"}...`);
+  const tx = await dist.claim(myClaim.index, signerAddress, myClaim.amountWei, myClaim.proof);
+  appendOutput(`Tx: ${tx.hash}`);
+  await tx.wait();
+  appendOutput(`Done. Tokens delivered to ${signerAddress}.`);
+}
+
+async function addTokenToWallet(flags) {
+  const addr = flags.address || flags._[0];
+  if (!addr) {
+    appendOutput("Usage: add-token <token-address>");
+    return;
+  }
+  if (!window.ethereum) {
+    appendOutput("No wallet detected.");
+    return;
+  }
+  const readProvider = provider || new ethers.JsonRpcProvider(BASE_RPC_URL);
+  const t = new ethers.Contract(addr, TOKEN_ABI, readProvider);
+  const [symbol, decimals] = await Promise.all([
+    t.symbol().catch(() => null),
+    t.decimals().catch(() => 18),
+  ]);
+  if (!symbol) {
+    appendOutput(`Could not read symbol from ${addr}. Is this an ERC-20 contract?`);
+    return;
+  }
+  appendOutput(`Asking your wallet to track ${symbol} (${addr})...`);
+  try {
+    const wasAdded = await window.ethereum.request({
+      method: "wallet_watchAsset",
+      params: { type: "ERC20", options: { address: addr, symbol, decimals: Number(decimals) } },
+    });
+    appendOutput(wasAdded ? `${symbol} added to wallet. Check your assets list.` : `Wallet declined adding ${symbol}.`);
+  } catch (e) {
+    appendOutput(`Failed: ${e.message || e}`);
+  }
+}
+
 function showHelp() {
   resetOutput(`MAREV CLI ready.
 
-Available commands:
-- help
-- connect
-- switch-base
-- use-account 0x...
-- clear-account-override
-- show account
-- show coins
-- create-token --name "Name" --symbol SYMBOL --supply 1000000 --decimals 18
-- list-token --address 0x... --token-amount 50 --usdc 0.05
-- preview-attn
-- attn-daily
-- claim-attn
-- open dex
-- open factory
-- open attention
+WALLET
+  connect                              connect your browser wallet (any: MetaMask / Uniswap / Rabby / Coinbase)
+  switch-base                          switch wallet to Base mainnet
+  use-account 0x...                    set an active account for read-only previews
+  clear-account-override               reset to your connected signer
+  show account                         show signer + active account
+  balances [<wallet>]                  show ETH + every factory-token balance for a wallet
+  add-token <address>                  prompt your wallet to add a token to the assets list
+
+AIRDROPS
+  find-claims [<wallet>]               scan all distributors and list claims for a wallet
+  claim --token 0x...                  claim your allocation from a token's airdrop
+
+TOKENS
+  show coins                           list factory-launched tokens
+  create-token --name "Name" --symbol SYM --supply 1000000 --decimals 18
+  list-token --address 0x... --token-amount 50 --usdc 0.05
+
+ATTN REWARDS
+  preview-attn
+  attn-daily
+  claim-attn
+
+NAVIGATION
+  open dex | factory | attention | launch | claim
 `);
 }
 
@@ -398,6 +562,14 @@ async function runCommand() {
       appendOutput(`Active account: ${activeAccount || "-"}`);
     } else if (command === "show" && flags._[0] === "coins") {
       await showCoins();
+    } else if (command === "balances" || command === "balance") {
+      await showBalances(flags);
+    } else if (command === "find-claims" || command === "claims") {
+      await findClaims(flags);
+    } else if (command === "claim") {
+      await claimFromAirdrop(flags);
+    } else if (command === "add-token") {
+      await addTokenToWallet(flags);
     } else if (command === "create-token") {
       await createToken(flags);
     } else if (command === "list-token") {
@@ -414,6 +586,10 @@ async function runCommand() {
       window.location.href = "/factory";
     } else if (command === "open" && flags._[0] === "attention") {
       window.location.href = "/attention";
+    } else if (command === "open" && flags._[0] === "launch") {
+      window.location.href = "/launch";
+    } else if (command === "open" && flags._[0] === "claim") {
+      window.location.href = "/claim";
     } else {
       appendOutput('Unknown command. Type "help".');
     }
