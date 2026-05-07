@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Earthenware Launch — Base Token + Airdrop in One Flow</title>
-<meta name="description" content="Launch a Base ERC-20 and configure a Merkle airdrop in one transaction set. Share one link, recipients claim themselves. Powered by 3XB and Earthenware Computer.">
+<title>Earthenware Launch — Base ERC-20 + Built-in Airdrop</title>
+<meta name="description" content="Launch a Base ERC-20 token with a Merkle airdrop in one flow. Configure recipients, share one claim link, recipients claim themselves. Built on Base, contracts open-source.">
 <link rel="canonical" href="https://launch.earthenwarecomputer.com/">
 <style>
 :root {
@@ -120,6 +120,29 @@ textarea { resize: vertical; line-height: 1.55; font-family: 'JetBrains Mono', C
 .section-title-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; margin-bottom: 6px; }
 .section-title-row h2 { margin-bottom: 4px; }
 
+.steps {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px;
+  margin-bottom: 24px;
+}
+.step {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+  padding: 16px;
+}
+.step-num {
+  display: inline-block; width: 26px; height: 26px; border-radius: 50%;
+  background: var(--cyan); color: #000; font-weight: 700; font-family: monospace;
+  text-align: center; line-height: 26px; font-size: 13px; margin-bottom: 8px;
+}
+.step-title { font-weight: 600; color: #fff; margin-bottom: 4px; font-size: 14px; }
+.step-desc { color: var(--muted); font-size: 12.5px; line-height: 1.5; }
+
+.card-num {
+  display: inline-block; width: 22px; height: 22px; border-radius: 50%;
+  background: var(--surface-2); color: var(--cyan); font-weight: 700; font-family: monospace;
+  text-align: center; line-height: 22px; font-size: 12px; margin-right: 8px;
+  vertical-align: 2px;
+}
+
 .actions-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
 
 .status-line {
@@ -167,8 +190,31 @@ footer { margin-top: 60px; padding-top: 24px; border-top: 1px solid var(--border
     <p>Create the token, deploy a Merkle distributor, fund it, publish a claim link — in one flow. Recipients claim themselves with one transaction.</p>
   </div>
 
+  <div class="steps">
+    <div class="step">
+      <span class="step-num">1</span>
+      <div class="step-title">Connect wallet</div>
+      <div class="step-desc">Connect MetaMask on Base. Need ~0.001 ETH for the launch fee plus a tiny bit of gas.</div>
+    </div>
+    <div class="step">
+      <span class="step-num">2</span>
+      <div class="step-title">Define your token</div>
+      <div class="step-desc">Pick a name, ticker symbol, decimals (usually 18), and total supply.</div>
+    </div>
+    <div class="step">
+      <span class="step-num">3</span>
+      <div class="step-title">Add recipients</div>
+      <div class="step-desc">Paste one wallet per line as <code>address,amount</code>. They'll be eligible to claim their share.</div>
+    </div>
+    <div class="step">
+      <span class="step-num">4</span>
+      <div class="step-title">Launch + share</div>
+      <div class="step-desc">Hit Launch, confirm 3 MetaMask popups, get a shareable claim URL. Recipients claim themselves.</div>
+    </div>
+  </div>
+
   <div class="card">
-    <h2>// WALLET</h2>
+    <h2><span class="card-num">1</span>// WALLET</h2>
     <div class="row connect-row">
       <button id="connectButton" class="btn-primary">Connect MetaMask</button>
       <button id="switchBaseButton">Switch to Base</button>
@@ -192,8 +238,8 @@ footer { margin-top: 60px; padding-top: 24px; border-top: 1px solid var(--border
   </div>
 
   <div class="card">
-    <h2>// TOKEN DETAILS</h2>
-    <p class="card-help">Standard ERC-20. Initial supply mints to your wallet; the airdrop allocation is then transferred to the distributor.</p>
+    <h2><span class="card-num">2</span>// TOKEN DETAILS</h2>
+    <p class="card-help">Standard ERC-20 contract. The full supply mints to your wallet first; later, the airdrop allocation is transferred from your wallet to the distributor automatically. <strong>Decimals</strong> is almost always <code>18</code> — leave it unless you know why you'd change it.</p>
     <div class="grid">
       <div>
         <label for="tokenName">Name</label>
@@ -215,8 +261,8 @@ footer { margin-top: 60px; padding-top: 24px; border-top: 1px solid var(--border
   </div>
 
   <div class="card">
-    <h2>// AIRDROP RECIPIENTS</h2>
-    <p class="card-help">One per line as <code>address,amount</code>. Amounts are in human units (e.g. <code>1000</code> = 1000 tokens at the configured decimals). Lines starting with <code>#</code> are ignored.</p>
+    <h2><span class="card-num">3</span>// AIRDROP RECIPIENTS</h2>
+    <p class="card-help">Who gets free tokens. Format: <code>address,amount</code> — one per line. Amount is in human units, not wei. <code>500</code> means 500 tokens (the contract handles decimals). Lines starting with <code>#</code> are comments. Click <strong>Validate Recipients</strong> to compute the Merkle root before launching.</p>
     <textarea id="recipientList" rows="9" spellcheck="false" placeholder="0xAbC...,500
 0xDef...,1000
 0x123...,250"></textarea>
@@ -246,8 +292,8 @@ footer { margin-top: 60px; padding-top: 24px; border-top: 1px solid var(--border
   </div>
 
   <div class="card">
-    <h2>// CLAIM WINDOW</h2>
-    <p class="card-help">Optional. After expiry the creator can call <code>sweep()</code> to recover unclaimed tokens. Leave blank for no expiry.</p>
+    <h2><span class="card-num">4</span>// CLAIM WINDOW <span style="font-size: 11px; color: var(--muted); letter-spacing: 0;">(optional)</span></h2>
+    <p class="card-help">How long recipients have to claim. After this window passes, you (the creator) can call <code>sweep()</code> on the distributor to recover unclaimed tokens. Leave blank if you want claims to stay open forever.</p>
     <div class="grid">
       <div>
         <label for="expiryDays">Days Until Expiry</label>
@@ -257,8 +303,12 @@ footer { margin-top: 60px; padding-top: 24px; border-top: 1px solid var(--border
   </div>
 
   <div class="card">
-    <h2>// LAUNCH</h2>
-    <p class="card-help">3 MetaMask confirmations: create token, deploy distributor, fund distributor. Then a 4th step publishes the claim data. Total cost: launch fee + ~$0.50 in Base gas.</p>
+    <h2><span class="card-num">5</span>// LAUNCH</h2>
+    <p class="card-help">When you click below, you'll see <strong>3 MetaMask popups in sequence</strong>:<br>
+    &nbsp;&nbsp;1. Deploy your ERC-20 token (you pay the launch fee).<br>
+    &nbsp;&nbsp;2. Deploy a Merkle distributor for the airdrop.<br>
+    &nbsp;&nbsp;3. Transfer the airdrop allocation from your wallet into the distributor.<br>
+    Then we publish your Merkle data and give you a public claim URL to share. <strong>Total cost:</strong> launch fee (above) + about $0.50 of Base gas. Stay on the page until you see the green result box.</p>
     <div class="actions-row">
       <button id="launchButton" class="btn-primary">Launch + Setup Airdrop</button>
     </div>
