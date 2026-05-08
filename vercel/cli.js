@@ -33,6 +33,20 @@ const DISTRIBUTOR_ABI = [
   "function claim(uint256 index, address account, uint256 amount, bytes32[] proof) external",
 ];
 
+const WETH_BASE = "0x4200000000000000000000000000000000000006";
+const UNI_V3_FACTORY = "0x33128a8fC17869897dcE68Ed026d694621f6FDfD";
+const UNI_V3_NFPM = "0x03a520b32C04BF3bEEf7BF5d27F39E8C3aDC4D9D";
+
+const POOL_ABI = [
+  "function slot0() view returns (uint160 sqrtPriceX96, int24 tick, uint16, uint16, uint16, uint8, bool)",
+];
+const V3_FACTORY_ABI = [
+  "function getPool(address,address,uint24) view returns (address)",
+];
+const NFPM_ABI = [
+  "function mint((address token0,address token1,uint24 fee,int24 tickLower,int24 tickUpper,uint256 amount0Desired,uint256 amount1Desired,uint256 amount0Min,uint256 amount1Min,address recipient,uint256 deadline)) payable returns (uint256 tokenId,uint128 liquidity,uint256 amount0,uint256 amount1)",
+];
+
 const LISTING_MANAGER_ABI = [
   "function launchToken(address token, uint256 tokenAmountDesired, uint256 baseAmountDesired, uint256 amountTokenMin, uint256 amountBaseMin, uint256 deadline) returns (address pair, uint256 amountToken, uint256 amountBase, uint256 liquidity)",
 ];
@@ -457,6 +471,149 @@ async function claimFromAirdrop(flags) {
   appendOutput(`Done. Tokens delivered to ${signerAddress}.`);
 }
 
+async function fetchEthUsd() {
+  try {
+    const r = await fetch("https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd");
+    if (!r.ok) return null;
+    const d = await r.json();
+    return d.ethereum?.usd || null;
+  } catch {
+    return null;
+  }
+}
+
+function priceUsdToTick(priceUsd, ethUsd, token0IsWeth) {
+  // For both tokens at 18 decimals; needs adjustment if not.
+  const rawPrice = token0IsWeth ? ethUsd / priceUsd : priceUsd / ethUsd;
+  return Math.floor(Math.log(rawPrice) / Math.log(1.0001));
+}
+
+function tickSpacingFor(fee) {
+  return fee === 100 ? 1 : fee === 500 ? 10 : fee === 3000 ? 60 : fee === 10000 ? 200 : 60;
+}
+
+async function runAuction(flags) {
+  if (!signer || !signerAddress) {
+    appendOutput("Connect wallet first.");
+    return;
+  }
+  const tokenAddr = flags.token || "0x974F27b8675F8baeb24832E43ECA201e16Bd2b20";
+  const amountStr = String(flags.amount || "10000000");
+  const startUsd = parseFloat(flags.start || "0.0001");
+  const endUsd = parseFloat(flags.end || "0.00001");
+  const fee = parseInt(flags.fee || "3000", 10);
+
+  if (!(startUsd > 0) || !(endUsd > 0) || endUsd >= startUsd) {
+    appendOutput("Need start > end > 0. Usage: auction --amount 10000000 --start 0.0001 --end 0.00001");
+    return;
+  }
+
+  appendOutput(`Auction config: sell ${amountStr} of ${tokenAddr} from $${startUsd} -> $${endUsd}`);
+
+  let ethUsd = await fetchEthUsd();
+  if (!ethUsd) { ethUsd = 2700; appendOutput(`Could not fetch ETH price; using $${ethUsd} fallback.`); }
+  else appendOutput(`ETH price: $${ethUsd.toLocaleString()}`);
+
+  const readP = provider || new ethers.JsonRpcProvider(BASE_RPC_URL);
+  const token = new ethers.Contract(tokenAddr, TOKEN_ABI, readP);
+  const decimals = Number(await token.decimals());
+  const symbol = await token.symbol().catch(() => "TOKEN");
+  if (decimals !== 18) {
+    appendOutput(`Note: token has ${decimals} decimals; tick math currently assumes 18. Aborting.`);
+    return;
+  }
+  const amount = ethers.parseUnits(amountStr, decimals);
+
+  const bal = await token.balanceOf(signerAddress);
+  if (bal < amount) {
+    appendOutput(`Wallet has only ${ethers.formatUnits(bal, decimals)} ${symbol}, needs ${amountStr}.`);
+    return;
+  }
+
+  const token0IsWeth = WETH_BASE.toLowerCase() < tokenAddr.toLowerCase();
+  const spacing = tickSpacingFor(fee);
+  const tStart = priceUsdToTick(startUsd, ethUsd, token0IsWeth);
+  const tEnd = priceUsdToTick(endUsd, ethUsd, token0IsWeth);
+  const tickLower = Math.floor(Math.min(tStart, tEnd) / spacing) * spacing;
+  const tickUpper = Math.ceil(Math.max(tStart, tEnd) / spacing) * spacing;
+
+  const factory = new ethers.Contract(UNI_V3_FACTORY, V3_FACTORY_ABI, readP);
+  const poolAddr = await factory.getPool(WETH_BASE, tokenAddr, fee);
+  if (!poolAddr || poolAddr === ZERO_ADDRESS) {
+    appendOutput(`No pool exists for ${symbol}/WETH at fee ${fee/10000}%. Create a pool first or pick another --fee tier.`);
+    return;
+  }
+  const pool = new ethers.Contract(poolAddr, POOL_ABI, readP);
+  const slot0 = await pool.slot0();
+  const currentTick = Number(slot0[1]);
+
+  appendOutput(`Pool:           ${poolAddr}`);
+  appendOutput(`token0:         ${token0IsWeth ? "WETH" : symbol}`);
+  appendOutput(`tickLower:      ${tickLower}`);
+  appendOutput(`tickUpper:      ${tickUpper}`);
+  appendOutput(`currentTick:    ${currentTick}`);
+
+  let okSide;
+  if (token0IsWeth) okSide = currentTick > tickUpper; // 100% token1=3XB
+  else okSide = currentTick < tickLower; // 100% token1=WETH... wait no
+  // Recompute: for single-sided position holding the *non-WETH* token:
+  // - if WETH is token0 and our token is token1: need currentTick > tickUpper -> position = 100% token1
+  // - if our token is token0 and WETH is token1: need currentTick < tickLower -> position = 100% token0
+  okSide = token0IsWeth ? currentTick > tickUpper : currentTick < tickLower;
+
+  if (!okSide) {
+    appendOutput(`Range straddles or sits on the wrong side of current tick (${currentTick}).`);
+    appendOutput(`For a single-sided ${symbol} sell, range must be ${token0IsWeth ? "below" : "above"} the current tick.`);
+    appendOutput(`This means the spot price needs to be ${token0IsWeth ? "lower (cheaper " + symbol + ")" : "higher"} than your auction's end price.`);
+    return;
+  }
+
+  // Approve
+  const tApproved = new ethers.Contract(tokenAddr, TOKEN_ABI, signer);
+  const allowance = await tApproved.allowance(signerAddress, UNI_V3_NFPM);
+  if (allowance < amount) {
+    appendOutput(`Approving ${symbol} for Uniswap NFPM...`);
+    const txA = await tApproved.approve(UNI_V3_NFPM, amount);
+    appendOutput(`  approve tx: ${txA.hash}`);
+    await txA.wait();
+    appendOutput(`  approved.`);
+  } else {
+    appendOutput(`${symbol} already approved.`);
+  }
+
+  // Mint
+  const params = {
+    token0: token0IsWeth ? WETH_BASE : tokenAddr,
+    token1: token0IsWeth ? tokenAddr : WETH_BASE,
+    fee,
+    tickLower,
+    tickUpper,
+    amount0Desired: token0IsWeth ? 0n : amount,
+    amount1Desired: token0IsWeth ? amount : 0n,
+    amount0Min: 0n,
+    amount1Min: 0n,
+    recipient: signerAddress,
+    deadline: Math.floor(Date.now() / 1000) + 20 * 60,
+  };
+  appendOutput(`Minting auction position (confirm in your wallet)...`);
+  const nfpm = new ethers.Contract(UNI_V3_NFPM, NFPM_ABI, signer);
+  const tx = await nfpm.mint(params, { gasLimit: 800000 });
+  appendOutput(`  mint tx: ${tx.hash}`);
+  const receipt = await tx.wait();
+
+  let tokenId = null;
+  for (const log of receipt.logs || []) {
+    if (log.address?.toLowerCase() === UNI_V3_NFPM.toLowerCase() &&
+        log.topics?.[0]?.toLowerCase() === ethers.id("Transfer(address,address,uint256)").toLowerCase()) {
+      tokenId = BigInt(log.topics[3]).toString();
+      break;
+    }
+  }
+  appendOutput(`Auction live!`);
+  appendOutput(`  position NFT id: ${tokenId || "(see app.uniswap.org/pools)"}`);
+  appendOutput(`  Manage at: https://app.uniswap.org/pools/${tokenId || ""}`);
+}
+
 async function addTokenToWallet(flags) {
   const addr = flags.address || flags._[0];
   if (!addr) {
@@ -512,6 +669,11 @@ WALLET
 AIRDROPS
   find-claims [<wallet>]               scan all distributors and list claims for a wallet
   claim --token 0x...                  claim your allocation from a token's airdrop
+
+UNISWAP
+  auction --amount N --start USD --end USD [--token 0x...] [--fee 3000]
+                                       mint single-sided V3 position (Dutch auction).
+                                       Defaults: token=3XB, amount=10M, $0.0001 -> $0.00001
 
 TOKENS
   show coins                           list factory-launched tokens
@@ -578,6 +740,8 @@ async function runCommand() {
       await claimFromAirdrop(flags);
     } else if (command === "add-token") {
       await addTokenToWallet(flags);
+    } else if (command === "auction") {
+      await runAuction(flags);
     } else if (command === "create-token") {
       await createToken(flags);
     } else if (command === "list-token") {
