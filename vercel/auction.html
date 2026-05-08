@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Earthenware Auction — Dutch Auction via Uniswap V3</title>
+<meta name="description" content="Run a Dutch auction on a Base ERC-20 by minting a single-sided Uniswap V3 position. Set start/end prices, deposit tokens, buyers swap on Uniswap normally.">
+<link rel="canonical" href="https://launch.earthenwarecomputer.com/auction">
+<style>
+:root {
+  --bg: #07080f;
+  --surface: #0e1018;
+  --surface-2: #14172a;
+  --border: #1e2133;
+  --cyan: #7df7ff;
+  --pink: #ff6b9d;
+  --yellow: #ffe66d;
+  --green: #a8ff78;
+  --red: #ff6b6b;
+  --text: #c8cfe0;
+  --muted: #5a6080;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; line-height: 1.6; min-height: 100%; }
+a { color: var(--cyan); text-decoration: none; }
+a:hover { color: #fff; }
+
+nav {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 32px; border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; background: rgba(7,8,15,0.92); backdrop-filter: blur(12px); z-index: 100;
+}
+.logo { font-family: monospace; font-size: 18px; color: var(--cyan); font-weight: bold; letter-spacing: 2px; }
+.logo span { color: var(--pink); }
+.nav-links { display: flex; gap: 24px; align-items: center; font-size: 14px; }
+.nav-links a { color: var(--text); }
+.nav-links a:hover { color: var(--cyan); }
+
+.shell { max-width: 720px; margin: 0 auto; padding: 48px 32px 80px; }
+
+.hero { text-align: center; padding: 24px 0 36px; background: radial-gradient(ellipse 80% 50% at 50% 0%, #0d1a2e 0%, transparent 70%); }
+.hero-eyebrow { display: inline-block; padding: 4px 12px; border: 1px solid var(--border); border-radius: 999px; font-family: monospace; font-size: 11px; color: var(--cyan); letter-spacing: 2px; margin-bottom: 18px; }
+.hero h1 { font-size: 36px; font-weight: 700; color: #fff; margin-bottom: 12px; line-height: 1.15; }
+.hero h1 .accent { color: var(--cyan); }
+.hero p { color: var(--muted); font-size: 15px; max-width: 560px; margin: 0 auto; }
+
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 18px; }
+.card h2 { font-size: 14px; font-family: monospace; color: var(--cyan); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 12px; }
+.card-help { color: var(--muted); font-size: 13px; margin-bottom: 14px; }
+
+.row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+button { cursor: pointer; font-family: inherit; font-size: 14px; font-weight: 600; padding: 10px 18px; border-radius: 7px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text); transition: all .15s; }
+button:hover { border-color: var(--cyan); color: #fff; }
+button:disabled { opacity: 0.45; cursor: not-allowed; }
+button:disabled:hover { border-color: var(--border); color: var(--text); }
+.btn-primary { background: var(--cyan); color: #000; border-color: var(--cyan); font-weight: 700; }
+.btn-primary:hover { background: #fff; border-color: #fff; color: #000; }
+.btn-primary:disabled { background: var(--cyan); color: #000; opacity: 0.4; }
+
+.tag { display: inline-block; padding: 4px 10px; border-radius: 999px; font-family: monospace; font-size: 11px; letter-spacing: 1.5px; background: var(--surface-2); color: var(--muted); }
+.tag.ok { color: var(--green); border: 1px solid #2a4633; }
+.tag.warn { color: var(--yellow); border: 1px solid #463e2a; }
+.tag.err { color: var(--red); border: 1px solid #4a2a2a; }
+
+label { display: block; font-family: monospace; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 6px; }
+input { width: 100%; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 7px; padding: 11px 14px; font-size: 14px; font-family: inherit; transition: border-color .15s; }
+input:focus { outline: none; border-color: var(--cyan); }
+.grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+.field-readout { background: var(--bg); border: 1px solid var(--border); border-radius: 7px; padding: 10px 14px; font-family: 'JetBrains Mono', Consolas, monospace; font-size: 12px; color: var(--text); word-break: break-all; min-height: 38px; }
+.field-readout.dim { color: var(--muted); }
+
+.actions-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+.status-line { font-family: 'JetBrains Mono', Consolas, monospace; font-size: 12px; color: var(--muted); margin-top: 12px; min-height: 18px; white-space: pre-wrap; }
+.status-line.ok { color: var(--green); }
+.status-line.warn { color: var(--yellow); }
+.status-line.err { color: var(--red); }
+
+.steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 24px; }
+.step { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+.step-num { display: inline-block; width: 26px; height: 26px; border-radius: 50%; background: var(--cyan); color: #000; font-weight: 700; font-family: monospace; text-align: center; line-height: 26px; font-size: 13px; margin-bottom: 8px; }
+.step-title { font-weight: 600; color: #fff; margin-bottom: 4px; font-size: 14px; }
+.step-desc { color: var(--muted); font-size: 12.5px; line-height: 1.5; }
+
+footer { margin-top: 60px; padding-top: 24px; border-top: 1px solid var(--border); color: var(--muted); font-size: 12px; text-align: center; }
+</style>
+</head>
+<body>
+<nav>
+  <a href="https://earthenwarecomputer.com" class="logo" style="color: var(--cyan);">EARTH<span>WARE</span></a>
+  <div class="nav-links">
+    <a href="/">Launch</a>
+    <a href="/claim">Claim</a>
+    <a href="/cli">CLI</a>
+  </div>
+</nav>
+
+<div class="shell">
+
+  <div class="hero">
+    <span class="hero-eyebrow">// DUTCH AUCTION</span>
+    <h1>Sell tokens at a <span class="accent">descending price</span><br>via Uniswap V3.</h1>
+    <p>Deposit tokens into a single-sided concentrated liquidity position. Buyers swap on Uniswap normally; the position acts as your seller's order book.</p>
+  </div>
+
+  <div class="steps">
+    <div class="step"><span class="step-num">1</span><div class="step-title">Connect wallet</div><div class="step-desc">Any wallet — MetaMask, Uniswap Wallet, Rabby, Coinbase.</div></div>
+    <div class="step"><span class="step-num">2</span><div class="step-title">Set parameters</div><div class="step-desc">Amount, start price, end price. Pre-filled for 3XB.</div></div>
+    <div class="step"><span class="step-num">3</span><div class="step-title">Approve token</div><div class="step-desc">One-time approval for the Uniswap position manager.</div></div>
+    <div class="step"><span class="step-num">4</span><div class="step-title">Mint position</div><div class="step-desc">One tx creates the V3 LP. Buyers can swap immediately.</div></div>
+  </div>
+
+  <div class="card">
+    <h2>// WALLET</h2>
+    <div class="row">
+      <button id="connectButton" class="btn-primary">Connect Wallet</button>
+      <span id="status" class="tag">DISCONNECTED</span>
+    </div>
+    <div class="grid" style="margin-top: 18px;">
+      <div><label>Wallet</label><div id="account" class="field-readout dim">—</div></div>
+      <div><label>Network</label><div id="network" class="field-readout dim">—</div></div>
+      <div><label>3XB Balance</label><div id="tokenBalance" class="field-readout dim">—</div></div>
+      <div><label>ETH Price (CoinGecko)</label><div id="ethPrice" class="field-readout dim">—</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>// AUCTION PARAMETERS</h2>
+    <p class="card-help">For a Dutch auction, <strong>Start Price</strong> is the most expensive (where the auction begins) and <strong>End Price</strong> is the cheapest (where it ends). Buyers walk the price down through the range as they swap. The auction "activates" only when the spot pool price reaches your start price — for option C we set the range right at the current pool price, so it's live from minute zero.</p>
+    <div class="grid">
+      <div>
+        <label for="amountInput">Amount (3XB to sell)</label>
+        <input id="amountInput" type="number" value="10000000" />
+      </div>
+      <div>
+        <label for="startPrice">Start Price (USD per 3XB)</label>
+        <input id="startPrice" type="number" step="0.000001" value="0.0001" />
+      </div>
+      <div>
+        <label for="endPrice">End Price (USD per 3XB)</label>
+        <input id="endPrice" type="number" step="0.000001" value="0.00001" />
+      </div>
+      <div>
+        <label for="feeTier">Fee Tier</label>
+        <input id="feeTier" type="number" value="3000" disabled />
+      </div>
+    </div>
+    <div class="actions-row">
+      <button id="previewButton">Preview Range</button>
+    </div>
+    <div class="grid" style="margin-top: 18px;">
+      <div><label>Tick Lower</label><div id="tickLower" class="field-readout dim">—</div></div>
+      <div><label>Tick Upper</label><div id="tickUpper" class="field-readout dim">—</div></div>
+      <div><label>Current Pool Tick</label><div id="currentTick" class="field-readout dim">—</div></div>
+      <div><label>Position Composition</label><div id="positionComposition" class="field-readout dim">—</div></div>
+    </div>
+    <p id="previewStatus" class="status-line"></p>
+  </div>
+
+  <div class="card">
+    <h2>// LAUNCH AUCTION</h2>
+    <p class="card-help">Two wallet popups: (1) approve Uniswap's NonfungiblePositionManager to spend your 3XB, (2) mint the position. Position is held by your wallet as an NFT — you can withdraw any unsold tokens later via Uniswap's UI.</p>
+    <div class="actions-row">
+      <button id="approveButton">Approve 3XB</button>
+      <button id="mintButton" class="btn-primary">Mint Auction Position</button>
+    </div>
+    <p id="auctionStatus" class="status-line"></p>
+    <div id="auctionResult" class="grid" style="display: none; margin-top: 18px;">
+      <div><label>Position NFT ID</label><div id="resultTokenId" class="field-readout">—</div></div>
+      <div><label>Mint Tx</label><div id="resultTx" class="field-readout">—</div></div>
+    </div>
+  </div>
+
+  <footer>
+    Single-sided Uniswap V3 position via NonfungiblePositionManager on Base.
+    Buyers trade your token through the standard Uniswap interface.
+  </footer>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/ethers@6.13.2/dist/ethers.umd.min.js"></script>
+<script src="auction.js"></script>
+</body>
+</html>
