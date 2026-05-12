@@ -1,0 +1,19 @@
+{
+  "tokenAddress": "0x240db9b65d7f03359e676554c600c9295532c27c",
+  "distributorAddress": "0x081cbfc1e32bd009609e903c1e0f3ab2b5629eae",
+  "tokenName": "AI Browser",
+  "tokenSymbol": "AIBR",
+  "tokenDecimals": 18,
+  "merkleRoot": "0xfde2aef9532491b0ad51bd8ca95d1c27779c191300b269ca542c5d20c8e2e7dd",
+  "expiry": 0,
+  "creator": "0x4253aaca78419dd5d82a74708c29c6bdfe325565",
+  "totalAmount": "100000000000000000000000",
+  "createdAt": "2026-05-12T20:23:09.200Z",
+  "claims": {
+    "0x4253aaca78419dd5d82a74708c29c6bdfe325565": {
+      "index": 0,
+      "amountWei": "100000000000000000000000",
+      "proof": []
+    }
+  }
+}
