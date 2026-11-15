@@ -38,7 +38,7 @@ cargo test
 
 ## Plans
 
-This project is free, and its license stays as is. Support it through [GitHub Sponsors](https://github.com/sponsors/fitzyracing1):
+This project is free and open source under the [MIT License](LICENSE). Support it through [GitHub Sponsors](https://github.com/sponsors/fitzyracing1):
 
 - **Free**: use the code, community support.
 - **Pro ($49/month)**: priority issues and support.
