@@ -1,4 +1,4 @@
-const GITHUB_API_BASE = "https://api.github.com";
+const { ensureWritesEnabled, getRepoSettings, proposeFileChange } = require("./_editor-github");
 
 function isAddress(value) {
   return /^0x[a-fA-F0-9]{40}$/.test(String(value || ""));
@@ -20,37 +20,16 @@ function readBody(req) {
   });
 }
 
-async function ghRequest(path, options, token) {
-  const response = await fetch(`${GITHUB_API_BASE}${path}`, {
-    ...options,
-    headers: {
-      Accept: "application/vnd.github+json",
-      Authorization: `Bearer ${token}`,
-      "User-Agent": "marev-airdrop",
-      "X-GitHub-Api-Version": "2022-11-28",
-      ...(options.headers || {}),
-    },
-  });
-  return response;
-}
-
 module.exports = async (req, res) => {
   if (req.method !== "POST") {
     res.status(405).json({ error: "Method not allowed" });
     return;
   }
 
-  const owner = process.env.GITHUB_EDITOR_OWNER;
-  const repo = process.env.GITHUB_EDITOR_REPO;
-  const branch = process.env.GITHUB_EDITOR_BRANCH || "main";
-  const token = process.env.GITHUB_EDITOR_TOKEN;
-
-  if (!owner || !repo || !token) {
-    res.status(500).json({ error: "GitHub editor env vars are not set" });
-    return;
-  }
-
   try {
+    ensureWritesEnabled();
+    getRepoSettings();
+
     const body = await readBody(req);
     const tokenAddress = String(body.tokenAddress || "").toLowerCase();
     if (!isAddress(tokenAddress)) {
@@ -88,50 +67,26 @@ module.exports = async (req, res) => {
       claims: body.claims,
     };
 
-    const content = Buffer.from(JSON.stringify(payload, null, 2), "utf8").toString("base64");
-
-    const existing = await ghRequest(
-      `/repos/${owner}/${repo}/contents/${repoPath}?ref=${encodeURIComponent(branch)}`,
-      { method: "GET" },
-      token
-    );
-
-    const putBody = {
+    // Opens a pull request; the claim page works once a maintainer merges it.
+    const result = await proposeFileChange({
+      repoPath,
+      content: JSON.stringify(payload, null, 2),
       message: `[marev-airdrop] save ${tokenAddress}`,
-      content,
-      branch,
-      committer: { name: "marev-airdrop", email: "airdrop@users.noreply.marev.local" },
-    };
-    if (existing.ok) {
-      const existingPayload = await existing.json();
-      putBody.sha = existingPayload.sha;
-    }
+      author: { name: "marev-airdrop", email: "airdrop@users.noreply.marev.local" },
+      branchPrefix: "airdrop",
+      prBody: `Airdrop claim data for \`${tokenAddress}\` submitted from /launch.\n\nCheck the token, distributor and Merkle root on Basescan before merging.`,
+    });
 
-    const put = await ghRequest(
-      `/repos/${owner}/${repo}/contents/${repoPath}`,
-      {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(putBody),
-      },
-      token
-    );
-
-    if (!put.ok) {
-      const text = await put.text();
-      res.status(put.status).json({ error: text || "GitHub commit failed" });
-      return;
-    }
-
-    const result = await put.json();
     res.status(200).json({
       ok: true,
-      commitSha: result?.commit?.sha || null,
-      contentSha: result?.content?.sha || null,
+      pending: true,
+      commitSha: result.commitSha,
+      contentSha: result.contentSha,
+      pullRequestUrl: result.pullRequestUrl,
       claimUrl: `/claim?token=${tokenAddress}`,
       airdropDataPath: `/airdrops/${tokenAddress}.json`,
     });
   } catch (error) {
-    res.status(500).json({ error: error.message || "airdrop-save failed" });
+    res.status(error.statusCode || 500).json({ error: error.message || "airdrop-save failed" });
   }
 };
