@@ -71,8 +71,10 @@ The site now includes a public editor at `/editor`.
 - `editor-allowed-files.json` defines which repo files the public editor can touch
 - `/api/editor-config` loads the curated editable file list
 - `/api/editor-file` reads a selected allowed file from GitHub
-- `/api/editor-save` commits a file update to GitHub
-- `/api/editor-rollback` restores one allowed file to a selected earlier commit
+- `/api/editor-save` opens a pull request with a file update (never writes to `main`)
+- `/api/editor-rollback` opens a pull request restoring one allowed file to an earlier commit
+- `/api/airdrop-save` opens a pull request with airdrop claim data
+- All three refuse writes unless the deployment sets `EDITOR_WRITES_ENABLED=true`
 - `/api/editor-audit` shows recent public-editor commits
 
 This model is intentionally limited to approved frontend files. It does not expose secrets, deployment config, or arbitrary repository write access.

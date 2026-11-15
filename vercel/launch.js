@@ -424,7 +424,7 @@ async function launchFlow() {
       throw new Error(savePayload.error || `Publish failed (${saveResponse.status})`);
     }
 
-    setLaunchStatus("Step 4/4 ✓ Claim data published. Launch complete!", "ok");
+    setLaunchStatus("Step 4/4 ✓ Claim data submitted for review. The claim link works once a maintainer merges it.", "ok");
 
     const claimUrl = `${window.location.origin}/claim?token=${tokenAddress.toLowerCase()}`;
     fillReadout("resultTokenAddress", tokenAddress);

@@ -111,37 +111,84 @@ async function getFile(repoPath, ref) {
   };
 }
 
+// Public writes are OFF unless the deployment explicitly sets EDITOR_WRITES_ENABLED=true.
+function ensureWritesEnabled() {
+  if (process.env.EDITOR_WRITES_ENABLED !== "true") {
+    const error = new Error("Public edits are turned off. Open a pull request on GitHub instead.");
+    error.statusCode = 403;
+    throw error;
+  }
+}
+
+function slugify(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 40) || "change";
+}
+
+// Never writes to the base branch. Creates a new branch from it, commits the file
+// there, and opens a pull request for a maintainer to review and merge.
+async function proposeFileChange({ repoPath, content, message, author, branchPrefix, prBody }) {
+  ensureWritesEnabled();
+  const { owner, repo, branch: baseBranch } = getRepoSettings();
+
+  const baseRef = await (await requestGitHub(`/repos/${owner}/${repo}/git/ref/heads/${encodeURIComponent(baseBranch)}`)).json();
+  const newBranch = `${branchPrefix}/${slugify(path.basename(repoPath))}-${Date.now()}`;
+  await requestGitHub(`/repos/${owner}/${repo}/git/refs`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ref: `refs/heads/${newBranch}`, sha: baseRef.object.sha }),
+  });
+
+  let existingSha;
+  try {
+    existingSha = (await getFile(repoPath, newBranch)).sha;
+  } catch (error) {
+    if (error.statusCode !== 404) throw error;
+  }
+
+  const commit = await (await requestGitHub(`/repos/${owner}/${repo}/contents/${encodeRepoPath(repoPath)}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      message,
+      content: Buffer.from(content, "utf8").toString("base64"),
+      branch: newBranch,
+      ...(existingSha ? { sha: existingSha } : {}),
+      ...(author ? { author, committer: author } : {}),
+    }),
+  })).json();
+
+  const pr = await (await requestGitHub(`/repos/${owner}/${repo}/pulls`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ title: message, head: newBranch, base: baseBranch, body: prBody || "" }),
+  })).json();
+
+  return {
+    branch: newBranch,
+    commitSha: commit?.commit?.sha || "",
+    contentSha: commit?.content?.sha || "",
+    pullRequestUrl: pr.html_url,
+    pullRequestNumber: pr.number,
+  };
+}
+
 async function saveFile({ repoPath, content, actorName, actorEmail, summary }) {
-  const { owner, repo, branch } = getRepoSettings();
-  const current = await getFile(repoPath, branch);
   const safeName = normalizeActorName(actorName);
   const safeEmail = normalizeActorEmail(actorEmail, safeName);
   const safeSummary = normalizeSummary(summary);
 
-  const body = {
+  return proposeFileChange({
+    repoPath,
+    content,
     message: `${AUDIT_PREFIX} ${safeName}: ${safeSummary}`,
-    content: Buffer.from(content, "utf8").toString("base64"),
-    sha: current.sha,
-    branch,
-    committer: {
-      name: safeName,
-      email: safeEmail,
-    },
-    author: {
-      name: safeName,
-      email: safeEmail,
-    },
-  };
-
-  const response = await requestGitHub(`/repos/${owner}/${repo}/contents/${encodeRepoPath(repoPath)}`, {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
+    author: { name: safeName, email: safeEmail },
+    branchPrefix: "editor",
+    prBody: `Proposed from the public web editor by **${safeName}** (unverified display name).\n\nFile: \`${repoPath}\`\n\nReview the diff before merging.`,
   });
-
-  return response.json();
 }
 
 async function listAuditCommits({ repoPath, perPage = 20, global = false }) {
@@ -194,10 +241,12 @@ module.exports = {
   AUDIT_PREFIX,
   ensureAllowedPath,
   getAllowedFiles,
+  ensureWritesEnabled,
   getRepoSettings,
   getFile,
   listAuditCommits,
   loadEditorConfig,
+  proposeFileChange,
   rollbackFile,
   saveFile,
 };

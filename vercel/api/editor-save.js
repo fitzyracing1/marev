@@ -50,10 +50,12 @@ module.exports = async (req, res) => {
       summary,
     });
 
+    // The change is proposed as a pull request; nothing is live until a maintainer merges it.
     res.status(200).json({
-      commitSha: result?.commit?.sha || "",
-      commitUrl: result?.commit?.html_url || "",
-      contentSha: result?.content?.sha || "",
+      commitSha: result.commitSha,
+      contentSha: result.contentSha,
+      pullRequestUrl: result.pullRequestUrl,
+      pullRequestNumber: result.pullRequestNumber,
     });
   } catch (error) {
     res.status(error.statusCode || 500).json({

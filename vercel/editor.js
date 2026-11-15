@@ -187,7 +187,7 @@ async function saveChanges() {
     });
 
     editorShaEl.textContent = shortSha(payload.contentSha);
-    setStatus(`Published ${entry.label}. Commit ${shortSha(payload.commitSha)} is live.`, "ok");
+    setStatus(`Change to ${entry.label} sent for review as pull request #${payload.pullRequestNumber}. It goes live after a maintainer merges it.`, "ok");
     await Promise.all([loadFileAudit(), loadGlobalAudit()]);
   } catch (error) {
     setStatus(error.message || "Could not publish change", "warn");
@@ -218,7 +218,7 @@ async function rollbackSelectedFile() {
     });
 
     editorShaEl.textContent = shortSha(payload.contentSha);
-    setStatus(`Rollback published. Commit ${shortSha(payload.commitSha)} is live.`, "ok");
+    setStatus(`Rollback sent for review as pull request #${payload.pullRequestNumber}. It goes live after a maintainer merges it.`, "ok");
     await Promise.all([loadFile(), loadFileAudit(), loadGlobalAudit()]);
   } catch (error) {
     setStatus(error.message || "Could not rollback file", "warn");
