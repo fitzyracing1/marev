@@ -54,7 +54,7 @@ After deployment, contract addresses will be saved to `deployments-base.json`
 
 - **MAREV Token**: `0x...`
 - **MAREV DEX**: `0x...`
-- **USDC (Base)**: `0x833589fCD6eDb6E08f4c7C32D4f71b1566469c3d`
+- **USDC (Base)**: `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913`
 
 ## Usage
 
