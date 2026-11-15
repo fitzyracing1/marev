@@ -42,7 +42,7 @@ async function main() {
     console.log("✓ Mock USDC deployed to:", usdcAddress);
   } else {
     // Use actual USDC on Base mainnet
-    usdcAddress = "0x833589fCD6eDb6E08f4c7C32D4f71b1566469c3d";
+    usdcAddress = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
     console.log("2. Using Base mainnet USDC:", usdcAddress);
   }
 
